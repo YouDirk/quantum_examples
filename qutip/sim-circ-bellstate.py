@@ -77,13 +77,19 @@ print("\nQuantum-Circuit:\n%s\n%s"
 
 svg_filename = os.path.splitext(sys.argv[0])[0] + '.svg'
 svg_xml = circ._raw_svg()
+
+# just a simple rescaling by injecting better units pt -> mm
 svg_xml = re.sub( r'(width="[0-9]+)[a-z]+(")', r'\1mm\2', svg_xml)
 svg_xml = re.sub(r'(height="[0-9]+)[a-z]+(")', r'\1mm\2', svg_xml)
-svg_file = open(svg_filename, mode='w')
-svg_file.write(svg_xml)
-svg_file.close()
 
-print("\nSVG : Written to '%s'" % (svg_filename))
+try:
+    svg_file = open(svg_filename, mode='w')
+    svg_file.write(svg_xml)
+    svg_file.close()
+
+    print("\nSVG : Written to '%s'" % (svg_filename))
+except Exception as e:
+    print("\nSVG : Could not write '%s'! %s" % (svg_filename, str(e)))
 
 # ********************************************************************
 # Save the quantum circuit as Open Quantum Assembly Language (QASM).
@@ -91,9 +97,13 @@ print("\nSVG : Written to '%s'" % (svg_filename))
 import qutip.qip.qasm as qs
 
 qasm_filename = os.path.splitext(sys.argv[0])[0] + '.qasm'
-qs.save_qasm(circ, qasm_filename)
 
-print("QASM: Written to '%s'" % (qasm_filename))
+try:
+    qs.save_qasm(circ, qasm_filename)
+
+    print("QASM: Written to '%s'" % (qasm_filename))
+except Exception as e:
+    print("QASM: Could not write '%s'! %s" % (qasm_filename, str(e)))
 
 # ********************************************************************
 # Defining input of quantum circuit.
@@ -124,16 +134,33 @@ for i in range(len(sim_ol_stat_probs)):
 # ********************************************************************
 # Run an 'operator-level' circuit simulation.
 
+sim_ol_N = 2000
+
+def sim_ol_map(i: int):
+    result = sim_ol.run(input_sim)
+
+    measurment = result.get_final_states(0)
+    hash_key = str(measurment)
+
+    return hash_key, measurment
+
 print("\nSimulation: Operator-Level (applying unitaries)")
-for i in range(5):
-    sim_ol_result = sim_ol.run(input_sim)
+map_result = qt.parallel.parallel_map(sim_ol_map, range(sim_ol_N),
+                                      progress_bar=True)
 
-    measurment = sim_ol_result.get_final_states(0)
+results = {}
+for hash_key, measurment in map_result:
+    if not hash_key in results.keys():
+        results[hash_key] = [measurment, 1]
+    else: results[hash_key][1] += 1
 
-    print("Measurement: %s" % (state2str(measurment)))
+for v in results.values():
+    print("Periodicity %s for %s" % (v[1]/sim_ol_N, state2str(v[0])))
 
 # ********************************************************************
-# Run an 'pulse-level' circuit simulation.
+# Run a 'pulse-level' circuit simulation.
+
+sim_pl_N = 2000
 
 print("\nSimulation: Pulse-Level"
       + " (open time evolution Hamiltonian solvers with noisiness)")
