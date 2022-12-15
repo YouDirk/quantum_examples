@@ -19,7 +19,7 @@
 
 import sys, os, re
 
-#import numpy as np
+import numpy as np
 #from matplotlib import pyplot as mp
 
 import qutip as qt
@@ -54,14 +54,14 @@ def qindex(i: int) -> int: return N - i - 1
 
 def print_sim_map_result(map_result: list):
     results = {}
-    for hash_key, measurement in map_result:
+    for hash_key, state in map_result:
         if not hash_key in results.keys():
-            results[hash_key] = [measurement, 1]
+            results[hash_key] = [state, 1]
         else: results[hash_key][1] += 1
 
-    for v in results.values():
-        print("Periodicity %s for %s" % (v[1]/sim_ol_N,
-                                         state2str(v[0])))
+    for state, count in results.values():
+        print("Periodicity %s for %s" % (count/len(map_result),
+                                         state2str(state)))
 
 # ********************************************************************
 # User defined quantum gates.
@@ -170,24 +170,54 @@ print_sim_map_result(sim_ol_map_result)
 # ********************************************************************
 # Run a 'pulse-level' circuit simulation.
 
-sim_pl_processor = dv.LinearSpinChain(N)
-#sim_pl_processor = dv.CircularSpinChain(N)
-
-sim_pl_procname = sim_pl_processor.__class__.__name__
-print("\nSimulation: Pulse-Level (using %s processor, with noisiness)"
-      % (sim_pl_procname))
-
-sim_pl_N = 2000
-
 # Measurements in circuit seems not to be supported for pulse-level
 # simulation.  We are measuring manually at the end of every
 # simulation.
 circ.remove_gate_or_measurement(name=circ_measure_label, remove='all')
 
-sim_pl_processor.load_circuit(circ)
+# Set True to use a (realistic) ModelProcessor, otherwise an 'Optimal
+# Control' will be used to predict optimal control pulses for the user
+# defined Hamiltonians.
+if True:
+    load_circuit_args = {}
+
+    sim_pl_processor = dv.LinearSpinChain(N)
+    #sim_pl_processor = dv.CircularSpinChain(N) # Noise not working
+    #sim_pl_processor = dv.DispersiveCavityQED(N, num_levels=2) # ???
+else:
+    tslots = 10
+    load_circuit_args = {'num_tslots': tslots, 'evo_time': tslots}
+
+    sim_pl_processor = dv.OptPulseProcessor(N,
+                                 drift=qt.tensor([qt.sigmaz()]*N))
+    sim_pl_processor.add_control(qt.sigmax(), cyclic_permutation=True)
+    sim_pl_processor.add_control(qt.sigmay(), cyclic_permutation=True)
+    sim_pl_processor.add_control(qt.tensor([qt.sigmay()]*N),
+                                 cyclic_permutation=True)
+
+sim_pl_procname = sim_pl_processor.__class__.__name__
+print("\nSimulation: Pulse-Level (using %s processor with noise)"
+      % (sim_pl_procname))
+
+sim_pl_N = 250
+
+sim_pl_processor.pulse_mode = "discrete"
+sim_pl_processor.load_circuit(circ, **load_circuit_args)
+
+noise = qt.qip.noise.RandomNoise(
+        dt=0.01, rand_gen=np.random.normal, loc=0.00, scale=0.02)
+sim_pl_processor.add_noise(noise)
 
 # --- pulse plot ---
 sim_pl_fig, sim_pl_axis = sim_pl_processor.plot_pulses()
+
+# Add noise to plot
+sim_pl_noisy_qobjevo, _ = sim_pl_processor.get_qobjevo(noisy=True)
+sim_pl_noisy_pulse = sim_pl_noisy_qobjevo.to_list()
+for i in range(1, len(sim_pl_noisy_pulse), 2):
+    noisy_coeff = sim_pl_noisy_pulse[i][1] + sim_pl_noisy_pulse[i+1][1]
+    sim_pl_axis[i//2].step(sim_pl_noisy_qobjevo.tlist, noisy_coeff)
+
 sim_pl_filename = "%s-pulse-%s.svg" % (
                   os.path.splitext(sys.argv[0])[0], sim_pl_procname)
 try:
@@ -201,10 +231,9 @@ except Exception as e:
 def sim_pl_map(i: int):
     result = sim_pl_processor.run_state(input_sim)
 
-    measurement = qt.measurement.measure(result.states[-1],
-                                        qt.tensor([qt.sigmaz()]*N))[1]
+    _, measurement = qt.measurement.measure(result.states[-1],
+                                            qt.tensor([qt.sigmaz()]*N))
     hash_key = str(measurement)
-
     return hash_key, measurement
 
 sim_pl_map_result = qt.parallel.parallel_map(sim_pl_map, range(sim_pl_N),
