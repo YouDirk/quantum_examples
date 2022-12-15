@@ -19,10 +19,12 @@
 
 import sys, os, re
 
-import numpy as np
+#import numpy as np
+#from matplotlib import pyplot as mp
 
 import qutip as qt
 import qutip.qip.circuit as cc
+import qutip.qip.device as dv
 
 # ********************************************************************
 # Some utility functions.
@@ -50,6 +52,17 @@ def state2str(state: qt.Qobj) -> str:
 # with targets=2 if N=3.
 def qindex(i: int) -> int: return N - i - 1
 
+def print_sim_map_result(map_result: list):
+    results = {}
+    for hash_key, measurement in map_result:
+        if not hash_key in results.keys():
+            results[hash_key] = [measurement, 1]
+        else: results[hash_key][1] += 1
+
+    for v in results.values():
+        print("Periodicity %s for %s" % (v[1]/sim_ol_N,
+                                         state2str(v[0])))
+
 # ********************************************************************
 # User defined quantum gates.
 
@@ -60,17 +73,19 @@ def bellsate_gate():
 # ********************************************************************
 # The quantum circuit to simulate.
 
+print("\nQuantum-Circuit:")
+
 circ = cc.QubitCircuit(N, num_cbits=N)
 
 circ.add_gate("SNOT", targets=qindex(0))
 circ.add_gate("CNOT", controls=qindex(0), targets=qindex(1))
 
+circ_measure_label = "M_all"
 for i in range(N):
-    circ.add_measurement("M" + str(i), targets=[qindex(i)],
+    circ.add_measurement(circ_measure_label, targets=qindex(i),
                          classical_store=qindex(i))
 
-print("\nQuantum-Circuit:\n%s\n%s"
-      % (circ.gates, circ.propagators(expand=False)))
+print("%s\n%s" % (circ.gates, circ.propagators(expand=False)))
 
 # ********************************************************************
 # Save a visual representation of the quantum circuit as SVG.
@@ -119,6 +134,8 @@ print("\nInput:\n%s" % state2str(input_sim))
 # ********************************************************************
 # Run statisitics for quantum circuit.
 
+print("\nStatistics:")
+
 sim_ol = cc.CircuitSimulator(circ, precompute_unitary=True)
 
 sim_ol_stat_result = sim_ol.run_statistics(input_sim)
@@ -126,7 +143,6 @@ sim_ol_stat_result = sim_ol.run_statistics(input_sim)
 sim_ol_stat_probs  = sim_ol_stat_result.get_probabilities()
 sim_ol_stat_states = sim_ol_stat_result.get_final_states()
 
-print("\nStatistics:")
 for i in range(len(sim_ol_stat_probs)):
       print("Probability %s for %s"
             % (sim_ol_stat_probs[i], state2str(sim_ol_stat_states[i])))
@@ -134,33 +150,66 @@ for i in range(len(sim_ol_stat_probs)):
 # ********************************************************************
 # Run an 'operator-level' circuit simulation.
 
+print("\nSimulation: Operator-Level (applying unitaries)")
+
 sim_ol_N = 2000
 
 def sim_ol_map(i: int):
     result = sim_ol.run(input_sim)
 
-    measurment = result.get_final_states(0)
-    hash_key = str(measurment)
+    measurement = result.get_final_states(0)
+    hash_key = str(measurement)
 
-    return hash_key, measurment
+    return hash_key, measurement
 
-print("\nSimulation: Operator-Level (applying unitaries)")
-map_result = qt.parallel.parallel_map(sim_ol_map, range(sim_ol_N),
-                                      progress_bar=True)
+sim_ol_map_result = qt.parallel.parallel_map(sim_ol_map, range(sim_ol_N),
+                                             progress_bar=True)
 
-results = {}
-for hash_key, measurment in map_result:
-    if not hash_key in results.keys():
-        results[hash_key] = [measurment, 1]
-    else: results[hash_key][1] += 1
-
-for v in results.values():
-    print("Periodicity %s for %s" % (v[1]/sim_ol_N, state2str(v[0])))
+print_sim_map_result(sim_ol_map_result)
 
 # ********************************************************************
 # Run a 'pulse-level' circuit simulation.
 
+sim_pl_processor = dv.LinearSpinChain(N)
+#sim_pl_processor = dv.CircularSpinChain(N)
+
+sim_pl_procname = sim_pl_processor.__class__.__name__
+print("\nSimulation: Pulse-Level (using %s processor, with noisiness)"
+      % (sim_pl_procname))
+
 sim_pl_N = 2000
 
-print("\nSimulation: Pulse-Level"
-      + " (open time evolution Hamiltonian solvers with noisiness)")
+# Measurements in circuit seems not to be supported for pulse-level
+# simulation.  We are measuring manually at the end of every
+# simulation.
+circ.remove_gate_or_measurement(name=circ_measure_label, remove='all')
+
+sim_pl_processor.load_circuit(circ)
+
+# --- pulse plot ---
+sim_pl_fig, sim_pl_axis = sim_pl_processor.plot_pulses()
+sim_pl_filename = "%s-pulse-%s.svg" % (
+                  os.path.splitext(sys.argv[0])[0], sim_pl_procname)
+try:
+    sim_pl_fig.savefig(sim_pl_filename, format='svg', transparent=True)
+
+    print("SVG       : pulses plotted to '%s'" % (sim_pl_filename))
+except Exception as e:
+    print("SVG : Could not write '%s'! %s" % (sim_pl_filename, str(e)))
+# --- end of pulse plot ---
+
+def sim_pl_map(i: int):
+    result = sim_pl_processor.run_state(input_sim)
+
+    measurement = qt.measurement.measure(result.states[-1],
+                                        qt.tensor([qt.sigmaz()]*N))[1]
+    hash_key = str(measurement)
+
+    return hash_key, measurement
+
+sim_pl_map_result = qt.parallel.parallel_map(sim_pl_map, range(sim_pl_N),
+                                             progress_bar=True)
+
+print_sim_map_result(sim_pl_map_result)
+
+# ********************************************************************
