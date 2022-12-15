@@ -87,7 +87,7 @@ try:
     svg_file.write(svg_xml)
     svg_file.close()
 
-    print("\nSVG : Written to '%s'" % (svg_filename))
+    print("\nSVG : circuit written to '%s'" % (svg_filename))
 except Exception as e:
     print("\nSVG : Could not write '%s'! %s" % (svg_filename, str(e)))
 
@@ -101,7 +101,7 @@ qasm_filename = os.path.splitext(sys.argv[0])[0] + '.qasm'
 try:
     qs.save_qasm(circ, qasm_filename)
 
-    print("QASM: Written to '%s'" % (qasm_filename))
+    print("QASM: circuit written to '%s'" % (qasm_filename))
 except Exception as e:
     print("QASM: Could not write '%s'! %s" % (qasm_filename, str(e)))
 
@@ -114,7 +114,7 @@ except Exception as e:
 #
 input_sim = qt.tensor(qt.basis(2, 0), qt.basis(2, 1))
 
-print("\nInput: %s" % (input_sim.trans()))
+print("\nInput:\n%s" % state2str(input_sim))
 
 # ********************************************************************
 # Run statisitics for quantum circuit.
