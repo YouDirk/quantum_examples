@@ -15,13 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-SUBDIRS = examplelib
+__all__ = ['SimState']
 
-.PHONY: all
-all:
-	./qutip-about.py
-
-.PHONY: clean
-clean:
-	-rm -rf $(foreach v, $(SUBDIRS) ., \
-	         $(addprefix $(v)/, __pycache__ *.svg *.qasm *~ *.bak))
+from .SimState import *

@@ -20,6 +20,6 @@
 *.bak
 
 # QuTiP stuff
-/qutip/__pycache__
+/qutip/**/__pycache__
 /qutip/*.svg
 /qutip/*.qasm
