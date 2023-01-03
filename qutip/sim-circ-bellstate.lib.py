@@ -19,6 +19,8 @@
 
 import examplelib as el
 
+import qutip as qt
+
 sim = el.DefaultSim(N=2)
 
 # ********************************************************************
@@ -32,8 +34,19 @@ circ.add_gate("CNOT", controls=sim.qindex(0), targets=sim.qindex(1))
 sim.circalloced_load(circ)
 
 # ********************************************************************
+# Defining input of quantum circuit.
+
+# Order of qubits for tensor product:
+#
+#   q_1 (cross) q_0 = [0 1 2 3]
+#
+sim.circloaded_set_input(
+    qt.tensor(qt.basis(2, 0), qt.basis(2, 1))
+)
+
+# ********************************************************************
 # Run all file outputs, statistics and simulations.
 
-sim.circloaded_run_all()
+sim.circloaded_run_all(ol_runs=2000, pl_runs=250)
 
 # ********************************************************************

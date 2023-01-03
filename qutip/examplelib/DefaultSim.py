@@ -29,9 +29,10 @@ import qutip.qip.device as dv
 class DefaultSim (SimState):
 
     # Run all file outputs, statistics and simulations.  Requires that
-    # a circuit was loaded via CIRCALLOCED_LOAD().
-    def circloaded_run_all(self):
-        self._assert_gr_equal(self._state.CIRC_LOADED)
+    # a circuit was loaded via CIRCALLOCED_LOAD() and input set via
+    # CIRCLOADED_SET_INPUT.
+    def circloaded_run_all(self, ol_runs=2000, pl_runs=250):
+        self._assert_gr_equal(self._state.INPUT_SET)
 
         # ************************************************************
         # Save a visual representation of the quantum circuit as SVG.
@@ -45,17 +46,6 @@ class DefaultSim (SimState):
         self.circloaded_save_qasm()
 
         # ************************************************************
-        # Defining input of quantum circuit.
-
-        # Order of qubits for tensor product:
-        #
-        #   q_1 (cross) q_0 = [0 1 2 3]
-        #
-        self.circloaded_set_input(
-            qt.tensor(qt.basis(2, 0), qt.basis(2, 1))
-        )
-
-        # ************************************************************
         # Run statisitics for quantum circuit.
 
         self.inputset_statistics()
@@ -63,7 +53,7 @@ class DefaultSim (SimState):
         # ************************************************************
         # Run an 'operator-level' circuit simulation.
 
-        self.inputset_run_ol(2000)
+        self.inputset_run_ol(ol_runs)
 
         # ************************************************************
         # Setup a processor for 'pulse-level' circuit simulation.
@@ -96,7 +86,7 @@ class DefaultSim (SimState):
         # ************************************************************
         # Run a 'pulse-level' circuit simulation.
 
-        self.processorset_run_pl(250)
+        self.processorset_run_pl(pl_runs)
 
         # ************************************************************
 
