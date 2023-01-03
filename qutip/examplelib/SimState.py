@@ -29,21 +29,22 @@ import qutip.qip.device as dv
 import qutip.qip.noise as ns
 
 # ********************************************************************
-# private stuff
-
-class _state (enum.Flag):
-    INITIALIZED = enum.auto()
-    CIRC_ALLOCED = enum.auto()
-    CIRC_LOADED = enum.auto()
-    INPUT_SET = enum.auto()
-    PROCESSOR_SET = enum.auto()
-
-    def __str__(self) -> str:
-        return "%s(%d)" % (super().__str__().split('.')[-1], self.value)
-
-# ********************************************************************
 
 class SimState:
+    # ----------------------------------------------------------------
+    # private stuff
+
+    class _state (enum.Flag):
+        INITIALIZED = enum.auto()
+        CIRC_ALLOCED = enum.auto()
+        CIRC_LOADED = enum.auto()
+        INPUT_SET = enum.auto()
+        PROCESSOR_SET = enum.auto()
+
+        def __str__(self) -> str:
+            return "%s(%d)" \
+                   % (super().__str__().split('.')[-1], self.value)
+
     # ----------------------------------------------------------------
     # constants and some utility functions
 
@@ -70,7 +71,7 @@ class SimState:
         self.N = N
         self.cbits_N = cbits_N if cbits_N >= 0 else N
 
-        self.state = _state.INITIALIZED
+        self.state = self._state.INITIALIZED
 
     def __repr__(self) -> str:
         return "%s: N=%d, cbits_N=%d" \
@@ -121,11 +122,11 @@ class SimState:
     # CIRCALLOCED_LOAD().
     def init_new_circ(self) -> cc.QubitCircuit:
         print("\nQuantum-Circuit:")
-        self._assert(_state.INITIALIZED)
+        self._assert(self._state.INITIALIZED)
 
         result = cc.QubitCircuit(self.N, num_cbits=self.cbits_N)
 
-        self.state = _state.CIRC_ALLOCED
+        self.state = self._state.CIRC_ALLOCED
         return result
 
     # ----------------------------------------------------------------
@@ -133,7 +134,7 @@ class SimState:
 
     # Load circuit gotten from INIT_NEW_CIRC() into SimState simulator.
     def circalloced_load(self, circ: cc.QubitCircuit):
-        self._assert(_state.CIRC_ALLOCED)
+        self._assert(self._state.CIRC_ALLOCED)
 
         self.circ = circ
 
@@ -145,14 +146,14 @@ class SimState:
         print("%s\n%s"
               % (self.circ.gates, self.circ.propagators(expand=False)))
 
-        self.state = _state.CIRC_LOADED
+        self.state = self._state.CIRC_LOADED
 
     # ----------------------------------------------------------------
     # for state: CIRC_LOADED
 
     # Save a visual representation of the quantum circuit as SVG.
     def circloaded_save_svg(self):
-        self._assert_gr_equal(_state.CIRC_LOADED)
+        self._assert_gr_equal(self._state.CIRC_LOADED)
 
         xml = self.circ._raw_svg()
 
@@ -174,7 +175,7 @@ class SimState:
     # Save the quantum circuit as Open Quantum Assembly Language
     # (QASM).
     def circloaded_save_qasm(self):
-        self._assert_gr_equal(_state.CIRC_LOADED)
+        self._assert_gr_equal(self._state.CIRC_LOADED)
 
         try:
             qs.save_qasm(self.circ, self.QASM_FILENAME)
@@ -188,12 +189,12 @@ class SimState:
     # Quantum state to input for simulation.
     def circloaded_set_input(self, input: qt.Qobj):
         print("\nInput:")
-        self._assert(_state.CIRC_LOADED)
+        self._assert(self._state.CIRC_LOADED)
 
         self.input = input
 
         print(self._state2str(input))
-        self.state = _state.INPUT_SET
+        self.state = self._state.INPUT_SET
 
     # ----------------------------------------------------------------
     # for state: INPUT_SET
@@ -206,7 +207,7 @@ class SimState:
         sim_args.setdefault('precompute_unitary', True)
 
         print("\nStatistics:")
-        self._assert_gr_equal(_state.INPUT_SET)
+        self._assert_gr_equal(self._state.INPUT_SET)
 
         sim = cc.CircuitSimulator(self.circ, **sim_args)
 
@@ -234,7 +235,7 @@ class SimState:
         sim_args.setdefault('precompute_unitary', True)
 
         print("\nSimulation: Operator-Level (applying unitaries)")
-        self._assert_gr_equal(_state.INPUT_SET)
+        self._assert_gr_equal(self._state.INPUT_SET)
 
         sim = cc.CircuitSimulator(self.circ, **sim_args)
 
@@ -253,7 +254,7 @@ class SimState:
         noisename = noise.__class__.__name__ if noise else 'no-noise'
         print("\nProcessor: %s, using %s" % (procname, noisename))
 
-        self._assert_gr_equal(_state.INPUT_SET)
+        self._assert_gr_equal(self._state.INPUT_SET)
 
         if isinstance(processor, dv.ModelProcessor):
             load_circuit_args = {}
@@ -279,14 +280,14 @@ class SimState:
             self.noise = None
         self.procname = procname
         self.processor = processor
-        self.state = _state.PROCESSOR_SET
+        self.state = self._state.PROCESSOR_SET
 
     # ----------------------------------------------------------------
     # for state: PROCESSOR_SET
 
     # Plot pulses to SVG file.
     def processorset_plot_pulses(self):
-        self._assert_gr_equal(_state.PROCESSOR_SET)
+        self._assert_gr_equal(self._state.PROCESSOR_SET)
 
         fig, axis = self.processor.plot_pulses()
 
@@ -318,7 +319,7 @@ class SimState:
     # Run a 'pulse-level' circuit simulation.
     def processorset_run_pl(self, N: int):
         print("\nSimulation: Pulse-Level")
-        self._assert_gr_equal(_state.PROCESSOR_SET)
+        self._assert_gr_equal(self._state.PROCESSOR_SET)
 
         map_result = pa.parallel_map(self._processorset_run_pl_map,
           range(N), task_args=(self.processor,), progress_bar=True)

@@ -19,12 +19,7 @@
 
 import examplelib as el
 
-import numpy as np
-
-import qutip as qt
-import qutip.qip.device as dv
-
-sim = el.SimState(N=2)
+sim = el.DefaultSim(N=2)
 
 # ********************************************************************
 # The quantum circuit to simulate.
@@ -37,67 +32,8 @@ circ.add_gate("CNOT", controls=sim.qindex(0), targets=sim.qindex(1))
 sim.circalloced_load(circ)
 
 # ********************************************************************
-# Save a visual representation of the quantum circuit as SVG.
+# Run all file outputs, statistics and simulations.
 
-sim.circloaded_save_svg()
-
-# ********************************************************************
-# Save the quantum circuit as Open Quantum Assembly Language (QASM).
-
-sim.circloaded_save_qasm()
-
-# ********************************************************************
-# Defining input of quantum circuit.
-
-# Order of qubits for tensor product:
-#
-#   q_1 (cross) q_0 = [0 1 2 3]
-#
-sim.circloaded_set_input(
-    qt.tensor(qt.basis(2, 0), qt.basis(2, 1))
-)
-
-# ********************************************************************
-# Run statisitics for quantum circuit.
-
-sim.inputset_statistics()
-
-# ********************************************************************
-# Run an 'operator-level' circuit simulation.
-
-sim.inputset_run_ol(2000)
-
-# ********************************************************************
-# Setup a processor for 'pulse-level' circuit simulation.
-
-# Set True to use a (realistic) ModelProcessor, otherwise an 'Optimal
-# Control' will be used to predict optimal control pulses for the user
-# defined Hamiltonians.
-if True:
-    processor = dv.LinearSpinChain(sim.N)
-    #processor = dv.CircularSpinChain(sim.N) # Noise not working
-    #processor = dv.DispersiveCavityQED(sim.N, num_levels=2) # ???
-else:
-    processor = dv.OptPulseProcessor(sim.N,
-                                     drift=qt.tensor([qt.sigmaz()]*sim.N))
-    processor.add_control(qt.sigmax(), cyclic_permutation=True)
-    processor.add_control(qt.sigmay(), cyclic_permutation=True)
-    processor.add_control(qt.tensor([qt.sigmay()]*sim.N),
-                          cyclic_permutation=True)
-
-noise = qt.qip.noise.RandomNoise(
-        dt=0.01, rand_gen=np.random.normal, loc=0.00, scale=0.02)
-
-sim.inputset_set_processor(processor, noise)
-
-# ********************************************************************
-# Plot pulses to SVG file.
-
-sim.processorset_plot_pulses()
-
-# ********************************************************************
-# Run a 'pulse-level' circuit simulation.
-
-sim.processorset_run_pl(250)
+sim.circloaded_run_all()
 
 # ********************************************************************
