@@ -19,22 +19,12 @@
 
 import examplelib as el
 
-import sys, os, re
-
 import numpy as np
-#from matplotlib import pyplot as mp
 
 import qutip as qt
-import qutip.qip.circuit as cc
 import qutip.qip.device as dv
 
 sim = el.SimState(N=2)
-
-# ********************************************************************
-# Some utility functions.
-
-# Number of qubits in quantum circuit.
-N = 2
 
 # ********************************************************************
 # The quantum circuit to simulate.
@@ -84,65 +74,30 @@ sim.inputset_run_ol(2000)
 # Control' will be used to predict optimal control pulses for the user
 # defined Hamiltonians.
 if True:
-    processor = dv.LinearSpinChain(N)
-    #processor = dv.CircularSpinChain(N) # Noise not working
-    #processor = dv.DispersiveCavityQED(N, num_levels=2) # ???
+    processor = dv.LinearSpinChain(sim.N)
+    #processor = dv.CircularSpinChain(sim.N) # Noise not working
+    #processor = dv.DispersiveCavityQED(sim.N, num_levels=2) # ???
 else:
-    processor = dv.OptPulseProcessor(N,
-                                     drift=qt.tensor([qt.sigmaz()]*N))
+    processor = dv.OptPulseProcessor(sim.N,
+                                     drift=qt.tensor([qt.sigmaz()]*sim.N))
     processor.add_control(qt.sigmax(), cyclic_permutation=True)
     processor.add_control(qt.sigmay(), cyclic_permutation=True)
-    processor.add_control(qt.tensor([qt.sigmay()]*N),
+    processor.add_control(qt.tensor([qt.sigmay()]*sim.N),
                           cyclic_permutation=True)
 
 noise = qt.qip.noise.RandomNoise(
         dt=0.01, rand_gen=np.random.normal, loc=0.00, scale=0.02)
 
-sim.inputset_set_processor(dv.LinearSpinChain(sim.N), noise)
+sim.inputset_set_processor(processor, noise)
 
 # ********************************************************************
 # Plot pulses to SVG file.
 
 sim.processorset_plot_pulses()
 
-##
-## TODO
-##
+# ********************************************************************
+# Run a 'pulse-level' circuit simulation.
 
-## ********************************************************************
-## Run a 'pulse-level' circuit simulation.
-#
-## --- pulse plot ---
-#sim_pl_fig, sim_pl_axis = sim_pl_processor.plot_pulses()
-#
-## Add noise to plot
-#sim_pl_noisy_qobjevo, _ = sim_pl_processor.get_qobjevo(noisy=True)
-#sim_pl_noisy_pulse = sim_pl_noisy_qobjevo.to_list()
-#for i in range(1, len(sim_pl_noisy_pulse), 2):
-#    noisy_coeff = sim_pl_noisy_pulse[i][1] + sim_pl_noisy_pulse[i+1][1]
-#    sim_pl_axis[i//2].step(sim_pl_noisy_qobjevo.tlist, noisy_coeff)
-#
-#sim_pl_filename = "%s-pulse-%s.svg" % (
-#                  os.path.splitext(sys.argv[0])[0], sim_pl_procname)
-#try:
-#    sim_pl_fig.savefig(sim_pl_filename, format='svg', transparent=True)
-#
-#    print("SVG       : pulses plotted to '%s'" % (sim_pl_filename))
-#except Exception as e:
-#    print("SVG : Could not write '%s'! %s" % (sim_pl_filename, str(e)))
-## --- end of pulse plot ---
-#
-#def sim_pl_map(i: int):
-#    result = sim_pl_processor.run_state(input_sim)
-#
-#    _, measurement = qt.measurement.measure(result.states[-1],
-#                                            qt.tensor([qt.sigmaz()]*N))
-#    hash_key = str(measurement)
-#    return hash_key, measurement
-#
-#sim_pl_map_result = qt.parallel.parallel_map(sim_pl_map, range(sim_pl_N),
-#                                             progress_bar=True)
-#
-#print_sim_map_result(sim_pl_map_result)
+sim.processorset_run_pl(250)
 
 # ********************************************************************

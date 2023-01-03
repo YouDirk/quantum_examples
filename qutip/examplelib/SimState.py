@@ -52,6 +52,9 @@ class SimState:
     SVG_FILENAME  = os.path.splitext(sys.argv[0])[0] + '.svg'
     QASM_FILENAME = os.path.splitext(sys.argv[0])[0] + '.qasm'
 
+    SVG_PULSE_FILEMASK = "%s-pulse-%%s.svg" \
+                         % (os.path.splitext(sys.argv[0])[0])
+
     def qindex(self, i: int) -> int:
         return self.N - i - 1
 
@@ -60,6 +63,9 @@ class SimState:
 
     # ----------------------------------------------------------------
 
+    # N      : Number of quantum bits for circuit.
+    # CBITS_N: Number of classical bits for measuring.
+    #          Set to 0 to get p**2 results in state vector.
     def __init__(self, N: int, cbits_N: int = -1):
         self.N = N
         self.cbits_N = cbits_N if cbits_N >= 0 else N
@@ -111,6 +117,8 @@ class SimState:
     # ----------------------------------------------------------------
     # for state: INITIALIZED
 
+    # Returns an empty circuit to simulate.  Add this via
+    # CIRCALLOCED_LOAD().
     def init_new_circ(self) -> cc.QubitCircuit:
         print("\nQuantum-Circuit:")
         self._assert(_state.INITIALIZED)
@@ -123,6 +131,7 @@ class SimState:
     # ----------------------------------------------------------------
     # for state: CIRC_ALLOCED
 
+    # Load circuit gotten from INIT_NEW_CIRC() into SimState simulator.
     def circalloced_load(self, circ: cc.QubitCircuit):
         self._assert(_state.CIRC_ALLOCED)
 
@@ -141,6 +150,7 @@ class SimState:
     # ----------------------------------------------------------------
     # for state: CIRC_LOADED
 
+    # Save a visual representation of the quantum circuit as SVG.
     def circloaded_save_svg(self):
         self._assert_gr_equal(_state.CIRC_LOADED)
 
@@ -161,6 +171,8 @@ class SimState:
             print("\nSVG : Could not write '%s'! %s"
                   % (svg_filename, str(e)))
 
+    # Save the quantum circuit as Open Quantum Assembly Language
+    # (QASM).
     def circloaded_save_qasm(self):
         self._assert_gr_equal(_state.CIRC_LOADED)
 
@@ -173,6 +185,7 @@ class SimState:
             print("QASM: Could not write '%s'! %s"
                   % (self.QASM_FILENAME, str(e)))
 
+    # Quantum state to input for simulation.
     def circloaded_set_input(self, input: qt.Qobj):
         print("\nInput:")
         self._assert(_state.CIRC_LOADED)
@@ -185,6 +198,10 @@ class SimState:
     # ----------------------------------------------------------------
     # for state: INPUT_SET
 
+    # Run statisitics for quantum circuit.  Means to apply unitary
+    # transformations to the input state.  If CBITS_N was set to 0 in
+    # __INIT__() then the result will not be measured, the state
+    # vector will be print instead.
     def inputset_statistics(self, **sim_args):
         sim_args.setdefault('precompute_unitary', True)
 
@@ -212,6 +229,7 @@ class SimState:
 
         return hash_key, measurement
 
+    # Run an 'operator-level' circuit simulation.
     def inputset_run_ol(self, N: int, **sim_args):
         sim_args.setdefault('precompute_unitary', True)
 
@@ -227,6 +245,8 @@ class SimState:
 
     # ***
 
+    # Set a processor for 'pulse-level' circuit simulation, and add
+    # noise to the pulses optionally.
     def inputset_set_processor(self, processor: dv.Processor,
                                noise: ns.Noise = None):
         procname = processor.__class__.__name__
@@ -251,23 +271,61 @@ class SimState:
         processor.pulse_mode = "discrete"
         processor.load_circuit(circ, **load_circuit_args)
 
-        if noise: processor.add_noise(noise)
-
+        self.noise = noise
+        if noise:
+            processor.add_noise(noise)
+            self.noise = noise
+        else:
+            self.noise = None
+        self.procname = procname
         self.processor = processor
         self.state = _state.PROCESSOR_SET
 
     # ----------------------------------------------------------------
     # for state: PROCESSOR_SET
 
+    # Plot pulses to SVG file.
     def processorset_plot_pulses(self):
-        #TODO
-        pass
+        self._assert_gr_equal(_state.PROCESSOR_SET)
 
+        fig, axis = self.processor.plot_pulses()
+
+        # Add noise to plot
+        noisy_qobjevo, _ = self.processor.get_qobjevo(noisy=True)
+        noisy_pulse = noisy_qobjevo.to_list()
+        for i in range(1, len(noisy_pulse), 2):
+            noisy_coeff = noisy_pulse[i][1] + noisy_pulse[i+1][1]
+            axis[i//2].step(noisy_qobjevo.tlist, noisy_coeff)
+
+        filename = self.SVG_PULSE_FILEMASK % (self.procname)
+        try:
+            fig.savefig(filename, format='svg', transparent=True)
+
+            print("SVG      : pulses plotted to '%s'" % (filename))
+        except Exception as e:
+            print("SVG: Could not write '%s'! %s" % (filename, str(e)))
+
+    # ***
+
+    def _processorset_run_pl_map(self, i: int, processor: dv.Processor):
+        result = self.processor.run_state(self.input)
+
+        _, measurement = qt.measurement.measure(
+          result.states[-1], qt.tensor([qt.sigmaz()]*self.N))
+        hash_key = str(measurement)
+        return hash_key, measurement
+
+    # Run a 'pulse-level' circuit simulation.
     def processorset_run_pl(self, N: int):
         print("\nSimulation: Pulse-Level")
         self._assert_gr_equal(_state.PROCESSOR_SET)
 
-        #TODO
+        map_result = pa.parallel_map(self._processorset_run_pl_map,
+          range(N), task_args=(self.processor,), progress_bar=True)
+
+        self._print_map_result(map_result)
+
+    # ***
 
 # end of class SimState
 # ********************************************************************
