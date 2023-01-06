@@ -270,6 +270,9 @@ class SimState:
                                         remove='all')
 
         processor.pulse_mode = "discrete"
+
+        # Argument (, compiler=GateCompiler()) sub-class required for
+        # user defined gates.
         processor.load_circuit(circ, **load_circuit_args)
 
         self.noise = noise

@@ -76,19 +76,23 @@ class DefaultSim (SimState):
         noise = qt.qip.noise.RandomNoise(dt=0.01,
                 rand_gen=np.random.normal, loc=0.00, scale=0.02)
 
-        self.inputset_set_processor(processor, noise)
+        # For User-Gates it is required to compile it into pulses.
+        # For now it is not implemented yet, so we skip the
+        # pulse-level simulation in such a case.
+        if not self.circ.user_gates:
+            self.inputset_set_processor(processor, noise)
 
-        # ************************************************************
-        # Plot pulses to SVG file.
+            # ********************************************************
+            # Plot pulses to SVG file.
 
-        self.processorset_plot_pulses()
+            self.processorset_plot_pulses()
 
-        # ************************************************************
-        # Run a 'pulse-level' circuit simulation.
+            # ********************************************************
+            # Run a 'pulse-level' circuit simulation.
 
-        self.processorset_run_pl(pl_runs)
+            self.processorset_run_pl(pl_runs)
 
-        # ************************************************************
+            # ********************************************************
 
 # end of class DefaultSim
 # ********************************************************************
