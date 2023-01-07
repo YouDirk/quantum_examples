@@ -19,7 +19,7 @@ __all__ = ['SimState']
 
 import sys, os, re, copy
 
-import enum
+import enum, typing
 
 import qutip as qt
 import qutip.qip.circuit as cc
@@ -67,9 +67,14 @@ class SimState:
     # N      : Number of quantum bits for circuit.
     # CBITS_N: Number of classical bits for measuring.
     #          Set to 0 to get p**2 results in state vector.
-    def __init__(self, N: int, cbits_N: int = -1):
+    # ANALYSE_SIM_RESULT:
+    #   Function for additional output after simulation.  The DICT
+    #   argument has the layout: DICT[hash_key] = [state, count]
+    def __init__(self, N: int, cbits_N: int = -1,
+                 analyse_sim_result: typing.Callable[[dict], None] = None):
         self.N = N
         self.cbits_N = cbits_N if cbits_N >= 0 else N
+        self.analyse_sim_result = analyse_sim_result
 
         self.state = self._state.INITIALIZED
 
@@ -114,6 +119,8 @@ class SimState:
         for state, count in results.values():
             print("Periodicity %s for %s" % (count/len(map_result),
                                              self._state2str(state)))
+
+        if self.analyse_sim_result: self.analyse_sim_result(results)
 
     # ----------------------------------------------------------------
     # for state: INITIALIZED

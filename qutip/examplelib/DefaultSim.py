@@ -61,7 +61,11 @@ class DefaultSim (SimState):
         # Set True to use a (realistic) ModelProcessor, otherwise an
         # 'Optimal Control' will be used to predict optimal control
         # pulses for the user defined Hamiltonians.
-        if True:
+        #
+        # For User-Gates it is required to compile these into gate
+        # specific pulses, if a ModelProcessor is in use.  So we
+        # enforce OptPulseProcessor in such cases.
+        if not self.circ.user_gates and True:
             processor = dv.LinearSpinChain(self.N)
             #processor = dv.CircularSpinChain(self.N) # Noise not working
             #processor = dv.DispersiveCavityQED(self.N, num_levels=2) # ?
@@ -76,23 +80,19 @@ class DefaultSim (SimState):
         noise = qt.qip.noise.RandomNoise(dt=0.01,
                 rand_gen=np.random.normal, loc=0.00, scale=0.02)
 
-        # For User-Gates it is required to compile it into pulses.
-        # For now it is not implemented yet, so we skip the
-        # pulse-level simulation in such a case.
-        if not self.circ.user_gates:
-            self.inputset_set_processor(processor, noise)
+        self.inputset_set_processor(processor, noise)
 
-            # ********************************************************
-            # Plot pulses to SVG file.
+        # ************************************************************
+        # Plot pulses to SVG file.
 
-            self.processorset_plot_pulses()
+        self.processorset_plot_pulses()
 
-            # ********************************************************
-            # Run a 'pulse-level' circuit simulation.
+        # ************************************************************
+        # Run a 'pulse-level' circuit simulation.
 
-            self.processorset_run_pl(pl_runs)
+        self.processorset_run_pl(pl_runs)
 
-            # ********************************************************
+        # ************************************************************
 
 # end of class DefaultSim
 # ********************************************************************
