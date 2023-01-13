@@ -32,6 +32,15 @@ import qutip.qip.noise as ns
 
 class SimState:
     # ----------------------------------------------------------------
+    # subclasses can override this
+
+    # Function for additional output after simulation.  The
+    # SIM_RESULTS argument has the type:
+    #
+    #   SIM_RESULTS['hash_key'] = [state: qt.Qobj, count: int]
+    def analyse_sim_result(self, sim_results: dict): pass
+
+    # ----------------------------------------------------------------
     # private stuff
 
     class _state (enum.Flag):
@@ -62,19 +71,26 @@ class SimState:
     def cindex(self, i: int) -> int:
         return self.cbits_N - i - 1
 
+    def state_toint(self, state: qt.Qobj) -> int:
+        return sum([i*int(state[i][0][0].real)
+                    if state[i][0][0] != 0.0 else 0
+                    for i in range(state.shape[0])])
+
+    def state_tobit(self, state: qt.Qobj, n_shift: int) -> int:
+        number = self.state_toint(state)
+
+        # ABS() required to prevent masking negative 2-complements
+        # numbers.
+        return 1 if abs(number) & (1 << n_shift) else 0
+
     # ----------------------------------------------------------------
 
     # N      : Number of quantum bits for circuit.
     # CBITS_N: Number of classical bits for measuring.
     #          Set to 0 to get p**2 results in state vector.
-    # ANALYSE_SIM_RESULT:
-    #   Function for additional output after simulation.  The DICT
-    #   argument has the layout: DICT[hash_key] = [state, count]
-    def __init__(self, N: int, cbits_N: int = -1,
-                 analyse_sim_result: typing.Callable[[dict], None] = None):
+    def __init__(self, N: int, cbits_N: int = -1):
         self.N = N
         self.cbits_N = cbits_N if cbits_N >= 0 else N
-        self.analyse_sim_result = analyse_sim_result
 
         self.state = self._state.INITIALIZED
 
@@ -120,7 +136,7 @@ class SimState:
             print("Periodicity %s for %s" % (count/len(map_result),
                                              self._state2str(state)))
 
-        if self.analyse_sim_result: self.analyse_sim_result(results)
+        self.analyse_sim_result(results)
 
     # ----------------------------------------------------------------
     # for state: INITIALIZED

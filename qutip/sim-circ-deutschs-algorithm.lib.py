@@ -87,34 +87,37 @@ def Uf(f_def: str) -> qt.Qobj:
 # ********************************************************************
 # Output result
 
-def _bit_n_toint(n_shift: int, state: qt.Qobj) -> int:
-    number = sum([i*int(state[i][0][0].real)
-                  if state[i][0][0] != 0.0 else 0
-                  for i in range(state.shape[0])])
+class MySim(el.DefaultSim):
+    def analyse_sim_result(self, sim_results: dict):
+        f_balanced = -1
 
-    # ABS() required to prevent masking negative 2-complement numbers.
-    return 1 if abs(number) & (1 << n_shift) else 0
+        for state, count in sim_results.values():
+            cur = self.state_tobit(state, 1)
 
-def analyse_result(sim_results: dict):
-    f_balanced = -1
+            if (f_balanced < 0): f_balanced = cur
 
-    for state, count in sim_results.values():
-        cur = _bit_n_toint(1, state)
+            if f_balanced != cur:
+                raise AssertionError(
+                  "Error in Deutschs Algorithm: MSB x_1 not constant"
+                  + " with a periodicity of 100%!")
 
-        if (f_balanced < 0): f_balanced = cur
-
-        if f_balanced != cur:
+        print(
+          "\n**** The MSB x_1 is to be interpreted as 'f(|0>) XOR"
+          + " f(|1>)'.  That means, it is |0> if f(x)")
+        print(
+          "**** is constant; otherwise it is |1> if f(x) is depending"
+          + " on x (called 'balanced')\n****")
+        if f_balanced == 1:
+            print("**** Result: f(x) is balanced!")
+        elif f_balanced == 0:
+            print("**** Result: f(x) is constant!")
+        else:
             raise AssertionError(
-              "Error in Deutschs Algorithm: MSB x_1 not constant"
-              + " with a periodicity of 100%!")
+              "_BIT_N_TOINT() does not return a bit value!")
 
-    if f_balanced == 1:
-        print("\n**** Result: f(x) is balanced!")
-    elif f_balanced == 0:
-        print("\n**** Result: f(x) is constant!")
-    else:
-        raise AssertionError(
-          "_BIT_N_TOINT() does not return a bit value!")
+# ********************************************************************
+
+sim = MySim(N=2)
 
 # ********************************************************************
 # Output chosen f(x) via F_DEF
@@ -123,13 +126,12 @@ uf = Uf(F_DEF)
 
 print("\nChosen: f(x) via F_DEF\n")
 print("  f(|0>) = |%d>\n  f(|1>) = |%d>"
-  % (_bit_n_toint(0, uf * qt.tensor(qt.basis(2, 0), qt.basis(2, 0))),
-     _bit_n_toint(0, uf * qt.tensor(qt.basis(2, 1), qt.basis(2, 0)))))
+  % (sim.state_tobit(uf * qt.tensor(qt.basis(2, 0), qt.basis(2, 0)), 0),
+     sim.state_tobit(uf * qt.tensor(qt.basis(2, 1), qt.basis(2, 0)), 0)
+    ))
 
 # ********************************************************************
 # The quantum circuit to simulate.
-
-sim = el.DefaultSim(N=2, analyse_sim_result=analyse_result)
 
 circ = sim.init_new_circ()
 
