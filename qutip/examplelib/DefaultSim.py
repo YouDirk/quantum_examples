@@ -27,6 +27,12 @@ import qutip.qip.device as dv
 # ********************************************************************
 
 class DefaultSim (SimState):
+    # ----------------------------------------------------------------
+    # subclasses can override this
+
+    def new_noise(self):
+        return qt.qip.noise.RandomNoise(dt=0.01,
+               rand_gen=np.random.normal, loc=0.00, scale=0.02)
 
     # Run all file outputs, statistics and simulations.  Requires that
     # a circuit was loaded via CIRCALLOCED_LOAD() and input set via
@@ -77,10 +83,7 @@ class DefaultSim (SimState):
             processor.add_control(qt.tensor([qt.sigmay()]*self.N),
                                   cyclic_permutation=True)
 
-        noise = qt.qip.noise.RandomNoise(dt=0.01,
-                rand_gen=np.random.normal, loc=0.00, scale=0.02)
-
-        self.inputset_set_processor(processor, noise)
+        self.inputset_set_processor(processor, self.new_noise())
 
         # ************************************************************
         # Plot pulses to SVG file.

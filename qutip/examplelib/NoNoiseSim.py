@@ -15,8 +15,24 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-__all__ = ['SimState', 'DefaultSim', 'NoNoiseSim']
+__all__ = ['NoNoiseSim']
 
-from .SimState import *
 from .DefaultSim import *
-from .NoNoiseSim import *
+
+import numpy as np
+
+import qutip as qt
+import qutip.qip.device as dv
+
+# ********************************************************************
+
+class NoNoiseSim (DefaultSim):
+    # ----------------------------------------------------------------
+    # subclasses can override this
+
+    def new_noise(self): return None
+
+    # ----------------------------------------------------------------
+
+# end of class NoNoiseSim
+# ********************************************************************

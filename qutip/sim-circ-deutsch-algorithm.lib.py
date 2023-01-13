@@ -87,33 +87,34 @@ def Uf(f_def: str) -> qt.Qobj:
 # ********************************************************************
 # Output result
 
-class MySim(el.DefaultSim):
+class MySim (el.DefaultSim):
     def analyse_sim_result(self, sim_results: dict):
+        print(
+          "\n**** The MSB x_1 is to be interpreted as 'f(|0>) XOR"
+          + " f(|1>)'.  That means, it is |0> if f(x)"
+          + "\n**** is constant; otherwise it is |1> if f(x) is depending"
+          + " on x (called 'balanced')"
+          + "\n****")
+
         f_balanced = -1
 
         for state, count in sim_results.values():
             cur = self.state_tobit(state, 1)
 
-            if (f_balanced < 0): f_balanced = cur
+            if f_balanced < 0: f_balanced = cur
 
             if f_balanced != cur:
                 raise AssertionError(
                   "Error in Deutschs Algorithm: MSB x_1 not constant"
                   + " with a periodicity of 100%!")
 
-        print(
-          "\n**** The MSB x_1 is to be interpreted as 'f(|0>) XOR"
-          + " f(|1>)'.  That means, it is |0> if f(x)")
-        print(
-          "**** is constant; otherwise it is |1> if f(x) is depending"
-          + " on x (called 'balanced')\n****")
         if f_balanced == 1:
             print("**** Result: f(x) is balanced!")
         elif f_balanced == 0:
             print("**** Result: f(x) is constant!")
         else:
             raise AssertionError(
-              "_BIT_N_TOINT() does not return a bit value!")
+              "STATE_TOBIT() does not return a bit value!")
 
 # ********************************************************************
 
@@ -126,8 +127,8 @@ uf = Uf(F_DEF)
 
 print("\nChosen: f(x) via F_DEF\n")
 print("  f(|0>) = |%d>\n  f(|1>) = |%d>"
-  % (sim.state_tobit(uf * qt.tensor(qt.basis(2, 0), qt.basis(2, 0)), 0),
-     sim.state_tobit(uf * qt.tensor(qt.basis(2, 1), qt.basis(2, 0)), 0)
+  % (sim.state_tobit(uf * sim.basis_fromint(2, 0x0), 0),
+     sim.state_tobit(uf * sim.basis_fromint(2, 0x2), 0)
     ))
 
 # ********************************************************************
@@ -154,9 +155,7 @@ sim.circalloced_load(circ)
 #
 #   q_1 (cross) q_0 = [0 1 2 3]
 #
-sim.circloaded_set_input(
-    qt.tensor(qt.basis(2, 0), qt.basis(2, 1))
-)
+sim.circloaded_set_input(sim.basis_fromint(2, 0x1))
 
 # ********************************************************************
 # Run all file outputs, statistics and simulations.

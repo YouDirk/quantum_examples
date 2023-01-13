@@ -83,6 +83,25 @@ class SimState:
         # numbers.
         return 1 if abs(number) & (1 << n_shift) else 0
 
+    def basis_fromint(self, N: int, number: int) -> qt.Qobj:
+        num_abs = abs(number)
+
+        if num_abs >= 2**N:
+            raise AssertionError(
+              "Number %d has more than %d bits!" % (num_abs, N))
+
+        # Need to loop, because __SETITEM__() is not defined in class
+        # QT.QOBJ.  Just an indexed read access is possible.
+        for i in range(N):
+            bit = num_abs & 0x1
+
+            result = qt.tensor(qt.basis(2, bit), result) \
+                     if i > 0 else qt.basis(2, bit)
+
+            num_abs >>= 1
+
+        return result if number >= 0 else -result
+
     # ----------------------------------------------------------------
 
     # N      : Number of quantum bits for circuit.
@@ -282,7 +301,7 @@ class SimState:
         if isinstance(processor, dv.ModelProcessor):
             load_circuit_args = {}
         else:
-            tslots = 10
+            tslots = 40
             load_circuit_args = {'num_tslots': tslots, 'evo_time': tslots}
 
         # Measurements in circuit seems not to be supported for
@@ -318,11 +337,12 @@ class SimState:
         fig, axis = self.processor.plot_pulses()
 
         # Add noise to plot
-        noisy_qobjevo, _ = self.processor.get_qobjevo(noisy=True)
-        noisy_pulse = noisy_qobjevo.to_list()
-        for i in range(1, len(noisy_pulse), 2):
-            noisy_coeff = noisy_pulse[i][1] + noisy_pulse[i+1][1]
-            axis[i//2].step(noisy_qobjevo.tlist, noisy_coeff)
+        if self.noise:
+            noisy_qobjevo, _ = self.processor.get_qobjevo(noisy=True)
+            noisy_pulse = noisy_qobjevo.to_list()
+            for i in range(1, len(noisy_pulse), 2):
+                noisy_coeff = noisy_pulse[i][1] + noisy_pulse[i+1][1]
+                axis[i//2].step(noisy_qobjevo.tlist, noisy_coeff)
 
         filename = self.SVG_PULSE_FILEMASK % (self.procname)
         try:
