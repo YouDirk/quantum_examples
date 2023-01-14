@@ -172,6 +172,6 @@ sim.circloaded_set_input(sim.basis_fromint(N+1, 0x1))
 # ********************************************************************
 # Run all file outputs, statistics and simulations.
 
-sim.circloaded_run_all(ol_runs=2000, pl_runs=250)
+sim.inputset_run_all(ol_runs=2000, pl_runs=250)
 
 # ********************************************************************

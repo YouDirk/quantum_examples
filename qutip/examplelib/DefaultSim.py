@@ -37,7 +37,7 @@ class DefaultSim (SimState):
     # Run all file outputs, statistics and simulations.  Requires that
     # a circuit was loaded via CIRCALLOCED_LOAD() and input set via
     # CIRCLOADED_SET_INPUT.
-    def circloaded_run_all(self, ol_runs=2000, pl_runs=250):
+    def inputset_run_all(self, ol_runs=2000, pl_runs=250):
         self._assert_gr_equal(self._state.INPUT_SET)
 
         # ************************************************************
