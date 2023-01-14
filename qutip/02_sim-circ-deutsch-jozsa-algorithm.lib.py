@@ -21,7 +21,6 @@ import examplelib as el
 
 import numpy as np
 import qutip as qt
-import qutip.qip.circuit as cc
 
 # ********************************************************************
 
@@ -30,8 +29,7 @@ import qutip.qip.circuit as cc
 #   f(|4>) = |1>, f(|5>) = |0>, f(|6>) = |1>, f(|7>) = |0>
 #
 # LEN(F_DEF) must be a power of 2 (2, 4, 8, 16)!
-F_DEF = '1100001100111100'
-
+F_DEF = '0110100110010110'
 
 # To simulate
 #
@@ -45,10 +43,11 @@ F_DEF = '1100001100111100'
 #                                                  '-----'
 #
 # Result:
-#   x = |0> (prob. 100%)
+#   x_out = |0>    (prob. 100%)
 #     if f(x) is constant (f(x)=0 or f(x)=1)
-#   TODO ?else?  (prob. 100%)
-#     if f(x) is balanced (f(x)=0 in 2^(n-1) in x of the cases)
+#   x_out = const  (prob. 100%)
+#     if f(x) is balanced (means every split in half of bits has the
+#                          same number of |1>'s on each side)
 
 # ********************************************************************
 
@@ -91,19 +90,20 @@ class MySim (el.NoNoiseSim):
     def analyse_sim_result(self, sim_results: dict):
         print(
           "\n**** The output x_out is to be interpreted as:"
-          + "\n****   f(x) is balanced if x_out != |0>"
-          + "\n****   f(x) is constant if x_out == |0>"
-          + "\n****   neither nor if x_out is toggling."
+          + "\n****   - f(x) is balanced if x_out != |0000>"
+          + "\n****   - f(x) is constant if x_out == |0000>"
+          + "\n****   -             else if x_out is toggling."
           + "\n****")
 
         if len(sim_results) < 2:
             raise AssertionError(
-              "Error in Deutsch-Jozsa Algorithm: At least bit Y should"
-              + " toggle.  Otherwise it is possible that OL_RUNS or"
-              + " PL_RUNS was set too low!")
+              "Error in Deutsch-Jozsa algorithm: At least the LSB bit"
+              + " y_out should toggle.  Otherwise it is possible that"
+              + " OL_RUNS or PL_RUNS is set too low!")
 
         if (len(sim_results) > 2):
-            print("**** Result: f(x) is neither balanced nor constant!")
+            print("**** Result: f(x) is neither balanced nor constant!"
+              + "  Number of measured results: %d" % len(sim_results))
             return
 
         f_balanced = -1
@@ -115,12 +115,12 @@ class MySim (el.NoNoiseSim):
 
             if f_balanced != x:
                 raise AssertionError(
-                  "Error in Deutsch-Jozsa Algorithm: The output of X"
+                  "Error in Deutsch-Jozsa algorithm: The output x_out"
                   + " toggles and is not constant, but just 2 states"
                   + " where measured!")
 
         if f_balanced > 0:
-            print("**** Result: f(x) is balanced with x_out=%d!"
+            print("**** Result: f(x) is balanced with x_out = |%d>!"
                   % (x))
         elif f_balanced == 0:
             print("**** Result: f(x) is constant!")

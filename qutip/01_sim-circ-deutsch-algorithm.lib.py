@@ -19,9 +19,7 @@
 
 import examplelib as el
 
-import numpy as np
 import qutip as qt
-import qutip.qip.circuit as cc
 
 # ********************************************************************
 

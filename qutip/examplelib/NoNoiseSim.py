@@ -19,10 +19,7 @@ __all__ = ['NoNoiseSim']
 
 from .DefaultSim import *
 
-import numpy as np
-
 import qutip as qt
-import qutip.qip.device as dv
 
 # ********************************************************************
 
