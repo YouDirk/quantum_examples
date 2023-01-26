@@ -20,6 +20,7 @@ __all__ = ['StatePlotter']
 import sys, os
 
 import numpy as np
+import matplotlib as ma
 from matplotlib import pyplot as mp
 
 import qutip as qt
@@ -29,8 +30,6 @@ import qutip as qt
 class StatePlotter:
     # ----------------------------------------------------------------
     # constants
-
-    TITLE = "Circuit Input"
 
     LABEL_X = "time $t$"
     LABEL_Y = "probability $\\left|\\alpha\\right|^2$"
@@ -55,6 +54,22 @@ class StatePlotter:
 
         return result
 
+    def _prepare_plot(self, title: str) \
+                            -> (ma.figure.Figure, ma.axes.Axes):
+        fig, axs = mp.subplots(1, 1, figsize=(9, 5), sharex=True)
+
+        if title: axs.set_title(title)
+        axs.set_xlabel(self.LABEL_X)
+        axs.set_ylabel(self.LABEL_Y)
+        axs.set_xticks(self.t_arr, labels=self._labels_x())
+
+        axs.fill_between(self.t_arr, self.psi_arr[0])
+        for i in range(1, len(self.psi_arr)):
+            axs.fill_between(self.t_arr,
+                             self.psi_arr[i-1], self.psi_arr[i])
+
+        return fig, axs
+
     # ----------------------------------------------------------------
 
     # N: Number of quantum bits
@@ -78,20 +93,18 @@ class StatePlotter:
 
         self.psi_counter += 1
 
-    def show(self):
-        fig, axs = mp.subplots(1, 1, figsize=(9, 5), sharex=True)
-
-        axs.set_title(self.TITLE)
-        axs.set_xlabel(self.LABEL_X)
-        axs.set_ylabel(self.LABEL_Y)
-        axs.set_xticks(self.t_arr, labels=self._labels_x())
-
-        axs.fill_between(self.t_arr, self.psi_arr[0])
-        for i in range(1, len(self.psi_arr)):
-            axs.fill_between(self.t_arr,
-                             self.psi_arr[i-1], self.psi_arr[i])
+    def show(self, title: str='Unitary evolution of $\\left|\\psi\\right>$'):
+        fig, axs = self._prepare_plot(title)
+        fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
 
         mp.show()
+
+    def save(self, filename: str, title: str=None):
+        fig, axs = self._prepare_plot(title)
+
+        fig.tight_layout(rect=(0.0, 0.0, 1.0, 1.0))
+
+        fig.savefig(filename, format='svg', transparent=True)
 
 # end of class StatePlotter
 # ********************************************************************

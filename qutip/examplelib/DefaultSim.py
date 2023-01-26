@@ -52,6 +52,11 @@ class DefaultSim (SimState):
         self.circloaded_save_qasm()
 
         # ************************************************************
+        # Plot input state to SVG file.
+
+        self.inputset_save_inputstate_svg()
+
+        # ************************************************************
         # Run statisitics for quantum circuit.
 
         self.inputset_statistics()

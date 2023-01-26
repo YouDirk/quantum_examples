@@ -17,6 +17,8 @@
 
 __all__ = ['SimState']
 
+from .StatePlotter import *
+
 import sys, os, re, copy
 
 import enum
@@ -59,11 +61,13 @@ class SimState:
 
     CIRC_MEASURE_LABEL = "M_all"
 
-    SVG_FILENAME  = os.path.splitext(sys.argv[0])[0] + '.svg'
-    QASM_FILENAME = os.path.splitext(sys.argv[0])[0] + '.qasm'
+    FILENAME_PREFIX      = os.path.splitext(sys.argv[0])[0]
 
-    SVG_PULSE_FILEMASK = "%s-pulse-%%s.svg" \
-                         % (os.path.splitext(sys.argv[0])[0])
+    SVG_INSTATE_FILENAME = FILENAME_PREFIX + '-state-input.svg'
+    SVG_FILENAME         = FILENAME_PREFIX + '.svg'
+    QASM_FILENAME        = FILENAME_PREFIX + '.qasm'
+
+    SVG_PULSE_FILEMASK = "%s-pulse-%%s.svg" % (FILENAME_PREFIX)
 
     def qindex(self, i: int) -> int:
         return self.N - i - 1
@@ -240,6 +244,24 @@ class SimState:
 
     # ----------------------------------------------------------------
     # for state: INPUT_SET
+
+    # Plot input state to SVG file.
+    def inputset_save_inputstate_svg(self):
+        self._assert_gr_equal(self._state.INPUT_SET)
+
+        plot = StatePlotter(self.N)
+        plot.add(self.input)
+
+        filename = self.SVG_INSTATE_FILENAME
+        try:
+            plot.save(filename)
+
+            print("SVG      : Input state plotted to '%s'" % (filename))
+        except Exception as e:
+            print("SVG: Could not write '%s'! %s" % (filename, str(e)))
+
+
+    # ***
 
     # Run statisitics for quantum circuit.  Means to apply unitary
     # transformations to the input state.  If CBITS_N was set to 0 in
