@@ -19,7 +19,7 @@ __all__ = ['SimState']
 
 import sys, os, re, copy
 
-import enum, typing
+import enum
 
 import qutip as qt
 import qutip.qip.circuit as cc

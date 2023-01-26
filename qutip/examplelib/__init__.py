@@ -15,8 +15,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-__all__ = ['SimState', 'DefaultSim', 'NoNoiseSim']
+__all__ = ['SimState', 'DefaultSim', 'NoNoiseSim', 'StatePlotter']
 
 from .SimState import *
 from .DefaultSim import *
 from .NoNoiseSim import *
+
+from .StatePlotter import *

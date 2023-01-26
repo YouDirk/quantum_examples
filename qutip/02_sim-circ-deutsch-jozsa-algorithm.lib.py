@@ -48,6 +48,8 @@ F_DEF = '0110100110010110'
 #   x_out = const  (prob. 100%)
 #     if f(x) is balanced (means every split in half of bits has the
 #                          same number of |1>'s on each side)
+#   x_out = toggles
+#     if f(x) is neither constant nor balanced
 
 # ********************************************************************
 
@@ -78,7 +80,7 @@ def Uf(f_def: str) -> qt.Qobj:
             result[2*i + 1][2*i    ] = 1
         else:
             raise AssertionError(
-              "F_DEF: '%s' is not a valid string value!" % (bit))
+              "F_DEF: '%s' is not a valid bit value!" % (bit))
 
     return qt.Qobj(result,
                    dims=[[2]*(n+1), [2]*(n+1)])
@@ -101,7 +103,7 @@ class MySim (el.NoNoiseSim):
               + " y_out should toggle.  Otherwise it is possible that"
               + " OL_RUNS or PL_RUNS is set too low!")
 
-        if (len(sim_results) > 2):
+        if len(sim_results) > 2:
             print("**** Result: f(x) is neither balanced nor constant!"
               + "  Number of measured results: %d" % len(sim_results))
             return
