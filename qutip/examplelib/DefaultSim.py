@@ -52,19 +52,16 @@ class DefaultSim (SimState):
         self.circloaded_save_qasm()
 
         # ************************************************************
-        # Plot input state to SVG file.
-
-        self.inputset_save_inputstate_svg()
-
-        # ************************************************************
         # Run statisitics for quantum circuit.
 
         self.inputset_statistics()
+        self.inputset_save_states_svg('stats')
 
         # ************************************************************
         # Run an 'operator-level' circuit simulation.
 
         self.inputset_run_ol(ol_runs)
+        self.inputset_save_states_svg('operlevel')
 
         # ************************************************************
         # Setup a processor for 'pulse-level' circuit simulation.
@@ -99,6 +96,7 @@ class DefaultSim (SimState):
         # Run a 'pulse-level' circuit simulation.
 
         self.processorset_run_pl(pl_runs)
+        self.inputset_save_states_svg('pulslevel')
 
         # ************************************************************
 

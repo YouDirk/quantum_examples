@@ -23,6 +23,8 @@ import sys, os, re, copy
 
 import enum
 
+import numpy as np
+
 import qutip as qt
 import qutip.qip.circuit as cc
 import qutip.qip.qasm as qs
@@ -63,11 +65,11 @@ class SimState:
 
     FILENAME_PREFIX      = os.path.splitext(sys.argv[0])[0]
 
-    SVG_INSTATE_FILENAME = FILENAME_PREFIX + '-state-input.svg'
     SVG_FILENAME         = FILENAME_PREFIX + '.svg'
     QASM_FILENAME        = FILENAME_PREFIX + '.qasm'
 
-    SVG_PULSE_FILEMASK = "%s-pulse-%%s.svg" % (FILENAME_PREFIX)
+    SVG_PULSE_FILEMASK  = "%s-pulse-%%s.svg" % (FILENAME_PREFIX)
+    SVG_STATES_FILEMASK = "%s-states-%%s.svg" % (FILENAME_PREFIX)
 
     def qindex(self, i: int) -> int:
         return self.N - i - 1
@@ -115,6 +117,8 @@ class SimState:
         self.N = N
         self.cbits_N = cbits_N if cbits_N >= 0 else N
 
+        self.plotter_state = StatePlotter(self.N)
+
         self.state = self._state.INITIALIZED
 
     def __repr__(self) -> str:
@@ -133,7 +137,7 @@ class SimState:
               "At least state %s expected, but current %s is lower!\n  %s"
               % (state, self.state, self))
 
-    # Just an for assisitng printing output
+    # Just to assist printing output
     def _state2str(self, state: qt.Qobj) -> str:
         val = sum([i*int(state[i][0][0].real)
                    if state[i][0][0] != 0.0 else 0
@@ -148,16 +152,23 @@ class SimState:
         return "%s\n  = circuit data %s (binary %s)" \
                % (state.trans(), val, val_bin)
 
-    def _print_map_result(self, map_result: list):
+    def _process_map_result(self, map_result: list):
         results = {}
         for hash_key, state in map_result:
             if not hash_key in results.keys():
                 results[hash_key] = [state, 1]
             else: results[hash_key][1] += 1
 
+        self.plotter_state = StatePlotter(self.N)
+        self.plotter_state.add(self.input, 'in')
+
+        plot_state = qt.zero_ket(2**self.N, dims=[[2]*self.N, [1]*self.N])
         for state, count in results.values():
-            print("Periodicity %s for %s" % (count/len(map_result),
-                                             self._state2str(state)))
+            freq = count/len(map_result)
+            plot_state += np.sqrt(freq) * state
+            print("Frequency %s for %s" % (freq,
+                                           self._state2str(state)))
+        self.plotter_state.add(plot_state, 'out')
 
         self.analyse_sim_result(results)
 
@@ -187,7 +198,7 @@ class SimState:
         for i in range(self.cbits_N):
             circ.add_measurement(
               self.CIRC_MEASURE_LABEL, targets=self.qindex(i),
-                classical_store=self.cindex(i))
+              classical_store=self.cindex(i))
 
         print("%s\n%s"
               % (self.circ.gates, self.circ.propagators(expand=False)))
@@ -239,6 +250,9 @@ class SimState:
 
         self.input = input
 
+        self.plotter_state = StatePlotter(self.N)
+        self.plotter_state.add(self.input, 'in')
+
         print(self._state2str(input))
         self.state = self._state.INPUT_SET
 
@@ -246,20 +260,16 @@ class SimState:
     # for state: INPUT_SET
 
     # Plot input state to SVG file.
-    def inputset_save_inputstate_svg(self):
+    def inputset_save_states_svg(self, filename_postfix: str):
         self._assert_gr_equal(self._state.INPUT_SET)
 
-        plot = StatePlotter(self.N)
-        plot.add(self.input)
-
-        filename = self.SVG_INSTATE_FILENAME
+        filename = self.SVG_STATES_FILEMASK % (filename_postfix)
         try:
-            plot.save(filename)
+            self.plotter_state.save(filename)
 
-            print("SVG      : Input state plotted to '%s'" % (filename))
+            print("SVG      : states plotted to '%s'" % (filename))
         except Exception as e:
-            print("SVG: Could not write '%s'! %s" % (filename, str(e)))
-
+            print("SVG : Could not write '%s'! %s" % (filename, str(e)))
 
     # ***
 
@@ -280,9 +290,15 @@ class SimState:
         stat_probs  = stat_result.get_probabilities()
         stat_states = stat_result.get_final_states()
 
+        self.plotter_state = StatePlotter(self.N)
+        self.plotter_state.add(self.input, 'in')
+
+        plot_state = qt.zero_ket(2**self.N, dims=[[2]*self.N, [1]*self.N])
         for i in range(len(stat_probs)):
+            plot_state += np.sqrt(stat_probs[i]) * stat_states[i]
             print("Probability %s for %s"
                   % (stat_probs[i], self._state2str(stat_states[i])))
+        self.plotter_state.add(plot_state, 'out')
 
     # ***
 
@@ -306,7 +322,7 @@ class SimState:
         map_result = pa.parallel_map(self._inputset_run_ol_map,
           range(N), task_args=(sim,), progress_bar=True)
 
-        self._print_map_result(map_result)
+        self._process_map_result(map_result)
 
     # ***
 
@@ -392,7 +408,7 @@ class SimState:
         map_result = pa.parallel_map(self._processorset_run_pl_map,
           range(N), task_args=(self.processor,), progress_bar=True)
 
-        self._print_map_result(map_result)
+        self._process_map_result(map_result)
 
     # ***
 

@@ -39,18 +39,34 @@ class StatePlotter:
     # ----------------------------------------------------------------
     # private stuff
 
-    def _psi2probs_summed(self, psi: qt.Qobj) -> np.array:
-        return np.matmul(np.tri(self.n, self.n),
-                         np.abs(np.array(psi))**2)
+    def _int2bin(self, v: int) -> str:
+        result = ''
+
+        v = abs(v)
+        for i in range(self.N):
+            result = ('1' if v & 0x1 else '0') + result
+            v >>= 1
+
+        return result
 
     def _labels_x(self) -> list:
         result = []
-        for t in self.t_arr:
-            int_t = int(t)
-            if t != int_t:
+        for i in range(len(self.t_arr)):
+            int_t = int(self.t_arr[i])
+            if self.t_arr[i] != int_t:
                 result.append('')
                 continue
-            result.append('$\\left|\\psi_' + str(int_t) + '\\right>$')
+            ind_str = str(int_t) if   self.t_name_arr[i//2] == None \
+                                 else self.t_name_arr[i//2]
+            result.append('$\\left|\\psi_{' + ind_str + '}\\right>$')
+
+        return result
+
+    def _labels_polys(self) -> list:
+        result = []
+
+        for i in range(self.n):
+            result.append("$\\left|%s\\right>$" % (self._int2bin(i)))
 
         return result
 
@@ -63,10 +79,9 @@ class StatePlotter:
         axs.set_ylabel(self.LABEL_Y)
         axs.set_xticks(self.t_arr, labels=self._labels_x())
 
-        axs.fill_between(self.t_arr, self.psi_arr[0])
-        for i in range(1, len(self.psi_arr)):
-            axs.fill_between(self.t_arr,
-                             self.psi_arr[i-1], self.psi_arr[i])
+        axs.stackplot(self.t_arr,
+                      self.psi_arr, labels=self._labels_polys())
+        axs.legend(loc='upper left', ncols=6)
 
         return fig, axs
 
@@ -74,26 +89,37 @@ class StatePlotter:
 
     # N: Number of quantum bits
     def __init__(self, N: int):
+        self.N = N
         self.n = 2**N
 
-        self.t_arr   = np.array([])
-        self.psi_arr = np.array([[]]*self.n)
+        self.t_name_arr = []
+        self.t_arr      = np.array([])
+        self.psi_arr    = np.array([[]]*self.n)
 
         self.psi_counter = 0
 
-    def add(self, psi: qt.Qobj):
+    def add(self, psi: qt.Qobj, t_name: str=None):
+        psi_unit = psi.unit()
+
+        if (psi != psi_unit):
+            print("Warning: StatePlotter.add(): |psi> is not a unit"
+                  + " vector!  Adapting normalization.")
+
+        self.t_name_arr.append(t_name)
+
         self.t_arr = np.append(self.t_arr, self.psi_counter)
         self.t_arr = np.append(self.t_arr,
                                self.psi_counter + self.STATIC_TIME)
 
         self.psi_arr = np.append(self.psi_arr,
-                                 self._psi2probs_summed(psi), axis=1)
+                                 np.abs(np.array(psi_unit))**2, axis=1)
         self.psi_arr = np.append(self.psi_arr,
-                                 self._psi2probs_summed(psi), axis=1)
+                                 np.abs(np.array(psi_unit))**2, axis=1)
 
         self.psi_counter += 1
 
-    def show(self, title: str='Unitary evolution of $\\left|\\psi\\right>$'):
+    def show(self,
+             title: str='Unitary evolution of $\\left|\\psi\\right>$'):
         fig, axs = self._prepare_plot(title)
         fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.955))
 
