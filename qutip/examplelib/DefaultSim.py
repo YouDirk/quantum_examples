@@ -55,7 +55,7 @@ class DefaultSim (SimState):
         # Run statisitics for quantum circuit.
 
         self.inputset_statistics()
-        self.inputset_save_states_svg('stats')
+        self.inputset_save_states_svg('statistics')
 
         # ************************************************************
         # Run an 'operator-level' circuit simulation.
@@ -96,7 +96,7 @@ class DefaultSim (SimState):
         # Run a 'pulse-level' circuit simulation.
 
         self.processorset_run_pl(pl_runs)
-        self.inputset_save_states_svg('pulslevel')
+        self.inputset_save_states_svg('pulselevel')
 
         # ************************************************************
 

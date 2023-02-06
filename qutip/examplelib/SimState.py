@@ -65,8 +65,8 @@ class SimState:
 
     FILENAME_PREFIX      = os.path.splitext(sys.argv[0])[0]
 
-    SVG_FILENAME         = FILENAME_PREFIX + '.svg'
-    QASM_FILENAME        = FILENAME_PREFIX + '.qasm'
+    SVG_FILENAME         = FILENAME_PREFIX + '-circ.svg'
+    QASM_FILENAME        = FILENAME_PREFIX + '-circ.qasm'
 
     SVG_PULSE_FILEMASK  = "%s-pulse-%%s.svg" % (FILENAME_PREFIX)
     SVG_STATES_FILEMASK = "%s-states-%%s.svg" % (FILENAME_PREFIX)
