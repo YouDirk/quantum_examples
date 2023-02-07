@@ -32,9 +32,21 @@ class StatePlotter:
     # constants
 
     LABEL_X = "time $t$"
-    LABEL_Y = "probability $\\left|\\alpha\\right|^2$"
+    LABEL_Y = "Fock base $\\mapsto$" \
+              + " probability $\\left|\\alpha\\right|^2$"
 
     STATIC_TIME = 0.8
+
+    LABEL_XTICK_FMT = "$\\left|\\psi_{%s}\\right>$"
+
+    LABEL_LEGEND_FMT = "$\\left|%s\\right> \\mapsto %%.2f$"
+    LABEL_LEGEND_SIZE           = 12
+    LABEL_LEGEND_OFFSET_X       =  0.03
+    LABEL_LEGEND_OFFSET_Y       = -0.015
+    LABEL_LEGEND_HIDE_THRESHOLD =  0.02
+
+    POLY_FACECOLOR_RGB = [0.9]*3
+    POLY_EDGECOLOR_RGB = [0.0]*3
 
     # ----------------------------------------------------------------
     # private stuff
@@ -53,20 +65,18 @@ class StatePlotter:
         result = []
         for i in range(len(self.t_arr)):
             int_t = int(self.t_arr[i])
-            if self.t_arr[i] != int_t:
-                result.append('')
-                continue
+            if self.t_arr[i] != int_t: continue
             ind_str = str(int_t) if   self.t_name_arr[i//2] == None \
                                  else self.t_name_arr[i//2]
-            result.append('$\\left|\\psi_{' + ind_str + '}\\right>$')
+            result.append(self.LABEL_XTICK_FMT % (ind_str))
 
         return result
 
-    def _labels_polys(self) -> list:
+    def _labels_legend(self) -> list:
         result = []
 
         for i in range(self.n):
-            result.append("$\\left|%s\\right>$" % (self._int2bin(i)))
+            result.append(self.LABEL_LEGEND_FMT % (self._int2bin(i)))
 
         return result
 
@@ -74,14 +84,46 @@ class StatePlotter:
                             -> (ma.figure.Figure, ma.axes.Axes):
         fig, axs = mp.subplots(1, 1, figsize=(9, 5), sharex=True)
 
+        labels_x = self._labels_x()
         if title: axs.set_title(title)
+        axs.spines[['top', 'right']].set_visible(False)
         axs.set_xlabel(self.LABEL_X)
         axs.set_ylabel(self.LABEL_Y)
-        axs.set_xticks(self.t_arr, labels=self._labels_x())
+        axs.set_xticks(list(range(len(labels_x))), labels=labels_x)
 
-        axs.stackplot(self.t_arr,
-                      self.psi_arr, labels=self._labels_polys())
-        axs.legend(loc='upper left', ncols=6)
+        labels_legend = self._labels_legend()
+        polys = axs.stackplot(self.t_arr, self.psi_arr,
+                              labels=labels_legend, baseline='zero',
+                              colors=[self.POLY_FACECOLOR_RGB])
+
+        for v in polys: v.set_edgecolor(self.POLY_EDGECOLOR_RGB)
+
+        for i in range(len(self.t_arr)):
+            labels = []
+            labels_prob = []
+            for n in range(len(labels_legend)):
+                int_t = int(self.t_arr[i])
+
+                if self.t_arr[i] != int_t \
+                   or self.psi_arr[n][i] == 0: continue
+
+                labels_prob.append(self.psi_arr[n][i])
+                if self.psi_arr[n][i] < self.LABEL_LEGEND_HIDE_THRESHOLD:
+                    labels.append(None)
+                else:
+                    labels.append(labels_legend[n] % (self.psi_arr[n][i]))
+
+            y_offset = 0
+            for j in range(len(labels)):
+                y = y_offset + labels_prob[j]/2
+                y_offset += labels_prob[j]
+
+                if labels[j] == None: continue
+
+                axs.annotate(labels[j],
+                  (self.t_arr[i] + self.LABEL_LEGEND_OFFSET_X,
+                               y + self.LABEL_LEGEND_OFFSET_Y),
+                  fontsize=self.LABEL_LEGEND_SIZE)
 
         return fig, axs
 
