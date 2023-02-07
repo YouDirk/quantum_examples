@@ -32,21 +32,24 @@ class StatePlotter:
     # constants
 
     LABEL_X = "time $t$"
-    LABEL_Y = "Fock base $\\mapsto$" \
-              + " probability $\\left|\\alpha\\right|^2$"
+    LABEL_Y = "Fock base $\\left| n \\right> \\mapsto$" \
+              + " probability $\\left|\\alpha_n\\right|^2 \\angle$" \
+              + " phase $\\varphi_n$"
 
     STATIC_TIME = 0.8
 
-    LABEL_XTICK_FMT = "$\\left|\\psi_{%s}\\right>$"
+    LABEL_XTICK_FMT = "$\\left|\\psi_{%s}\\right>," \
+                      + " \\varphi_{global} = %.2f \\pi$"
 
-    LABEL_LEGEND_FMT = "$\\left|%s\\right> \\mapsto %%.2f$"
+    LABEL_LEGEND_FMT = "$\\left|%s\\right> \\mapsto" \
+                       + " %%.2f \\angle %%.2f \\pi$"
     LABEL_LEGEND_SIZE           = 12
     LABEL_LEGEND_OFFSET_X       =  0.03
     LABEL_LEGEND_OFFSET_Y       = -0.015
     LABEL_LEGEND_HIDE_THRESHOLD =  0.02
 
-    POLY_FACECOLOR_RGB = [0.9]*3
-    POLY_EDGECOLOR_RGB = [0.0]*3
+    POLY_FACECOLOR_RGBA = [*[0.9]*3, 1.0]
+    POLY_EDGECOLOR_RGBA = [*[0.0]*3, 1.0]
 
     # ----------------------------------------------------------------
     # private stuff
@@ -68,7 +71,8 @@ class StatePlotter:
             if self.t_arr[i] != int_t: continue
             ind_str = str(int_t) if   self.t_name_arr[i//2] == None \
                                  else self.t_name_arr[i//2]
-            result.append(self.LABEL_XTICK_FMT % (ind_str))
+            result.append(self.LABEL_XTICK_FMT
+                          % (ind_str, self.psi_phase_arr[0][i]/np.pi))
 
         return result
 
@@ -89,14 +93,14 @@ class StatePlotter:
         axs.spines[['top', 'right']].set_visible(False)
         axs.set_xlabel(self.LABEL_X)
         axs.set_ylabel(self.LABEL_Y)
-        axs.set_xticks(list(range(len(labels_x))), labels=labels_x)
+        axs.set_xticks(list(range(len(labels_x))), labels=labels_x,
+                       ha='left')
 
         labels_legend = self._labels_legend()
         polys = axs.stackplot(self.t_arr, self.psi_arr,
                               labels=labels_legend, baseline='zero',
-                              colors=[self.POLY_FACECOLOR_RGB])
-
-        for v in polys: v.set_edgecolor(self.POLY_EDGECOLOR_RGB)
+                              colors=[self.POLY_FACECOLOR_RGBA],
+                              edgecolors=[self.POLY_EDGECOLOR_RGBA])
 
         for i in range(len(self.t_arr)):
             labels = []
@@ -111,7 +115,8 @@ class StatePlotter:
                 if self.psi_arr[n][i] < self.LABEL_LEGEND_HIDE_THRESHOLD:
                     labels.append(None)
                 else:
-                    labels.append(labels_legend[n] % (self.psi_arr[n][i]))
+                    labels.append(labels_legend[n]
+                      % (self.psi_arr[n][i], self.psi_phase_arr[n][i]/np.pi))
 
             y_offset = 0
             for j in range(len(labels)):
@@ -134,9 +139,10 @@ class StatePlotter:
         self.N = N
         self.n = 2**N
 
-        self.t_name_arr = []
-        self.t_arr      = np.array([])
-        self.psi_arr    = np.array([[]]*self.n)
+        self.t_name_arr    = []
+        self.t_arr         = np.array([])
+        self.psi_arr       = np.array([[]]*self.n)
+        self.psi_phase_arr = np.array([[]]*self.n)
 
         self.psi_counter = 0
 
@@ -157,6 +163,11 @@ class StatePlotter:
                                  np.abs(np.array(psi_unit))**2, axis=1)
         self.psi_arr = np.append(self.psi_arr,
                                  np.abs(np.array(psi_unit))**2, axis=1)
+
+        self.psi_phase_arr = np.append(self.psi_phase_arr,
+                                 np.angle(np.array(psi_unit)), axis=1)
+        self.psi_phase_arr = np.append(self.psi_phase_arr,
+                                 np.angle(np.array(psi_unit)), axis=1)
 
         self.psi_counter += 1
 
