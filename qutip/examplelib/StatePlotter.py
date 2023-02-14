@@ -36,7 +36,7 @@ class StatePlotter:
               + " probability $\\left|\\alpha_n\\right|^2 \\angle$" \
               + " phase $\\varphi_n$"
 
-    STATIC_TIME = 0.8
+    STATIC_TIME = 0.9
 
     LABEL_XTICK_FMT = "$\\left|\\psi_{%s}\\right>," \
                       + " \\varphi_{global} = %.2f \\pi$"
@@ -107,16 +107,19 @@ class StatePlotter:
             labels_prob = []
             for n in range(len(labels_legend)):
                 int_t = int(self.t_arr[i])
+                n_psi_arr = i//2*self.n + n
 
                 if self.t_arr[i] != int_t \
-                   or self.psi_arr[n][i] == 0: continue
+                   or self.psi_arr[n_psi_arr][i] == 0: continue
 
-                labels_prob.append(self.psi_arr[n][i])
-                if self.psi_arr[n][i] < self.LABEL_LEGEND_HIDE_THRESHOLD:
+                labels_prob.append(self.psi_arr[n_psi_arr][i])
+                if self.psi_arr[n_psi_arr][i] \
+                   < self.LABEL_LEGEND_HIDE_THRESHOLD:
                     labels.append(None)
                 else:
                     labels.append(labels_legend[n]
-                      % (self.psi_arr[n][i], self.psi_phase_arr[n][i]/np.pi))
+                      % (self.psi_arr[n_psi_arr][i],
+                         self.psi_phase_arr[n][i]/np.pi))
 
             y_offset = 0
             for j in range(len(labels)):
@@ -140,9 +143,9 @@ class StatePlotter:
         self.n = 2**N
 
         self.t_name_arr    = []
-        self.t_arr         = np.array([])
-        self.psi_arr       = np.array([[]]*self.n)
-        self.psi_phase_arr = np.array([[]]*self.n)
+        self.t_arr         = np.empty([0])
+        self.psi_arr       = np.empty([0, 0])
+        self.psi_phase_arr = np.empty([self.n, 0])
 
         self.psi_counter = 0
 
@@ -159,15 +162,17 @@ class StatePlotter:
         self.t_arr = np.append(self.t_arr,
                                self.psi_counter + self.STATIC_TIME)
 
-        self.psi_arr = np.append(self.psi_arr,
-                                 np.abs(np.array(psi_unit))**2, axis=1)
-        self.psi_arr = np.append(self.psi_arr,
-                                 np.abs(np.array(psi_unit))**2, axis=1)
+        cur_psi_arr = np.abs(np.array(psi_unit))**2
+        self.psi_arr = np.block([
+            [self.psi_arr,
+             np.zeros([self.n*self.psi_counter, 2])],
+            [np.zeros([self.n, 2*self.psi_counter]),
+             cur_psi_arr, cur_psi_arr]
+        ])
 
-        self.psi_phase_arr = np.append(self.psi_phase_arr,
-                                 np.angle(np.array(psi_unit)), axis=1)
-        self.psi_phase_arr = np.append(self.psi_phase_arr,
-                                 np.angle(np.array(psi_unit)), axis=1)
+        cur_psi_phase_arr = np.angle(np.array(psi_unit))
+        self.psi_phase_arr = np.block([
+            self.psi_phase_arr, cur_psi_phase_arr, cur_psi_phase_arr])
 
         self.psi_counter += 1
 
