@@ -65,8 +65,10 @@ class StatePlotter:
         return result
 
     def _labels_x(self) -> list:
+        len_t_arr = 2*self.psi_counter
+
         result = []
-        for i in range(len(self.t_arr)):
+        for i in range(len_t_arr):
             int_t = int(self.t_arr[i])
             if self.t_arr[i] != int_t: continue
             ind_str = str(int_t) if   self.t_name_arr[i//2] == None \
@@ -89,6 +91,9 @@ class StatePlotter:
         fig, axs = mp.subplots(1, 1, figsize=(9, 5), sharex=True)
 
         labels_x = self._labels_x()
+        psi_arr = np.empty([self.n, 0]) \
+            if self.psi_arr.shape[0] == 0 else self.psi_arr
+
         if title: axs.set_title(title)
         axs.spines[['top', 'right']].set_visible(False)
         axs.set_xlabel(self.LABEL_X)
@@ -97,12 +102,13 @@ class StatePlotter:
                        ha='left')
 
         labels_legend = self._labels_legend()
-        polys = axs.stackplot(self.t_arr, self.psi_arr,
+        polys = axs.stackplot(self.t_arr, psi_arr,
                               labels=labels_legend, baseline='zero',
                               colors=[self.POLY_FACECOLOR_RGBA],
                               edgecolors=[self.POLY_EDGECOLOR_RGBA])
 
-        for i in range(len(self.t_arr)):
+        len_t_arr = 2*self.psi_counter
+        for i in range(len_t_arr):
             labels = []
             labels_prob = []
             for n in range(len(labels_legend)):
@@ -150,7 +156,11 @@ class StatePlotter:
         self.psi_counter = 0
 
     def add(self, psi: qt.Qobj, t_name: str=None):
+        if not psi.isket:
+            raise AssertionError("Psi is not a ket vector!")
+
         psi_unit = psi.unit()
+        len_psi_y = self.n*self.psi_counter
 
         if (psi != psi_unit):
             print("Warning: StatePlotter.add(): |psi> is not a unit"
@@ -164,8 +174,7 @@ class StatePlotter:
 
         cur_psi_arr = np.abs(np.array(psi_unit))**2
         self.psi_arr = np.block([
-            [self.psi_arr,
-             np.zeros([self.n*self.psi_counter, 2])],
+            [self.psi_arr, np.zeros([len_psi_y, 2])],
             [np.zeros([self.n, 2*self.psi_counter]),
              cur_psi_arr, cur_psi_arr]
         ])
@@ -185,7 +194,6 @@ class StatePlotter:
 
     def save(self, filename: str, title: str=None):
         fig, axs = self._prepare_plot(title)
-
         fig.tight_layout(rect=(0.0, 0.0, 1.0, 1.0))
 
         fig.savefig(filename, format='svg', transparent=True)
