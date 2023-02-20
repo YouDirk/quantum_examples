@@ -48,8 +48,15 @@ class StatePlotter:
     LABEL_LEGEND_OFFSET_Y       = -0.015
     LABEL_LEGEND_HIDE_THRESHOLD =  0.02
 
-    POLY_FACECOLOR_RGBA = [*[0.9]*3, 1.0]
+    POLY_FACECOLOR_MAX_RGBA = [*[0.9]*3, 1.0]
+    POLY_FACECOLOR_MIN_RGBA = [*[0.3]*3, 1.0]
+    POLY_FACECOLOR_DIFF_RGBA = np.subtract(
+        POLY_FACECOLOR_MAX_RGBA, POLY_FACECOLOR_MIN_RGBA)
+
     POLY_EDGECOLOR_RGBA = [*[0.0]*3, 1.0]
+
+    HATCH_LINEWIDTH    = 0.3
+    HATCH_IGNORE_DELTA = 0.001
 
     # ----------------------------------------------------------------
     # private stuff
@@ -74,7 +81,7 @@ class StatePlotter:
             ind_str = str(int_t) if   self.t_name_arr[i//2] == None \
                                  else self.t_name_arr[i//2]
             result.append(self.LABEL_XTICK_FMT
-                          % (ind_str, self.psi_phase_arr[0][i]/np.pi))
+                          % (ind_str, self.psi_phase_arr[0][i]))
 
         return result
 
@@ -85,6 +92,15 @@ class StatePlotter:
             result.append(self.LABEL_LEGEND_FMT % (self._int2bin(i)))
 
         return result
+
+    def _hatch_select(self, begin: int, phase: float) -> bool:
+        r1_begin = begin
+        r1_end   = begin + 1
+        r2_begin = begin - 3
+        r2_end   = begin - 2
+
+        return phase >=  1/6 + r1_begin/8 and phase <=  1/6 + r1_end/8 \
+            or phase >= -1/6 + r2_begin/8 and phase <= -1/6 - r2_end/8
 
     def _prepare_plot(self, title: str) \
                             -> (ma.figure.Figure, ma.axes.Axes):
@@ -102,9 +118,10 @@ class StatePlotter:
                        ha='left')
 
         labels_legend = self._labels_legend()
+        # len(POLYS): SELF.n*SELF.PSI_COUNTER
         polys = axs.stackplot(self.t_arr, psi_arr,
                               labels=labels_legend, baseline='zero',
-                              colors=[self.POLY_FACECOLOR_RGBA],
+                              colors=[self.POLY_FACECOLOR_MAX_RGBA],
                               edgecolors=[self.POLY_EDGECOLOR_RGBA])
 
         len_t_arr = 2*self.psi_counter
@@ -114,9 +131,33 @@ class StatePlotter:
             for n in range(len(labels_legend)):
                 int_t = int(self.t_arr[i])
                 n_psi_arr = i//2*self.n + n
+                cur_phase = self.psi_phase_arr[n][i]
 
                 if self.t_arr[i] != int_t \
                    or self.psi_arr[n_psi_arr][i] == 0: continue
+
+                face_scale = np.multiply(self.POLY_FACECOLOR_DIFF_RGBA,
+                                         abs(cur_phase))
+                face_color = np.subtract(self.POLY_FACECOLOR_MAX_RGBA,
+                                         face_scale)
+                polys[n_psi_arr].set_facecolor(face_color)
+
+                hatch = None
+                if     cur_phase >    - self.HATCH_IGNORE_DELTA \
+                   and cur_phase <      self.HATCH_IGNORE_DELTA \
+                   or  cur_phase < -1 + self.HATCH_IGNORE_DELTA \
+                   or  cur_phase >  1 - self.HATCH_IGNORE_DELTA:
+                    hatch = None
+                elif self._hatch_select(-1, cur_phase):
+                    # TODO: Does not work ...
+                    hatch = '-'
+                elif self._hatch_select(0, cur_phase):
+                    hatch = '/'
+                elif self._hatch_select(1, cur_phase):
+                    hatch = '|'
+                elif self._hatch_select(2, cur_phase):
+                    hatch = '\\'
+                polys[n_psi_arr].set_hatch(hatch)
 
                 labels_prob.append(self.psi_arr[n_psi_arr][i])
                 if self.psi_arr[n_psi_arr][i] \
@@ -124,8 +165,7 @@ class StatePlotter:
                     labels.append(None)
                 else:
                     labels.append(labels_legend[n]
-                      % (self.psi_arr[n_psi_arr][i],
-                         self.psi_phase_arr[n][i]/np.pi))
+                      % (self.psi_arr[n_psi_arr][i], cur_phase))
 
             y_offset = 0
             for j in range(len(labels)):
@@ -148,12 +188,18 @@ class StatePlotter:
         self.N = N
         self.n = 2**N
 
+        # len(): SELF.PSI_COUNTER
         self.t_name_arr    = []
+        # len(): 2*SELF.PSI_COUNTER
         self.t_arr         = np.empty([0])
+        # len(): SELF.n*SELF.PSI_COUNTER X 2*SELF.PSI_COUNTER
         self.psi_arr       = np.empty([0, 0])
+        # len(): SELF.n X 2*SELF.PSI_COUNTER
         self.psi_phase_arr = np.empty([self.n, 0])
 
         self.psi_counter = 0
+
+        mp.rcParams['hatch.linewidth'] = self.HATCH_LINEWIDTH
 
     def add(self, psi: qt.Qobj, t_name: str=None):
         if not psi.isket:
@@ -179,7 +225,8 @@ class StatePlotter:
              cur_psi_arr, cur_psi_arr]
         ])
 
-        cur_psi_phase_arr = np.angle(np.array(psi_unit))
+        # PSI_PHASE >= -1 && PSI_PHASE <= 1  [angular velocity (* PI)]
+        cur_psi_phase_arr = np.angle(np.array(psi_unit))/np.pi
         self.psi_phase_arr = np.block([
             self.psi_phase_arr, cur_psi_phase_arr, cur_psi_phase_arr])
 
