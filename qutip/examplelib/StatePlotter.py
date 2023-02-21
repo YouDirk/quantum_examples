@@ -48,15 +48,15 @@ class StatePlotter:
     LABEL_LEGEND_OFFSET_Y       = -0.015
     LABEL_LEGEND_HIDE_THRESHOLD =  0.02
 
-    POLY_FACECOLOR_MAX_RGBA = [*[0.9]*3, 1.0]
-    POLY_FACECOLOR_MIN_RGBA = [*[0.3]*3, 1.0]
+    POLY_FACECOLOR_MAX_RGBA = [*[0.95]*3, 1.0]
+    POLY_FACECOLOR_MIN_RGBA = [*[0.25]*3, 1.0]
     POLY_FACECOLOR_DIFF_RGBA = np.subtract(
         POLY_FACECOLOR_MAX_RGBA, POLY_FACECOLOR_MIN_RGBA)
 
     POLY_EDGECOLOR_RGBA = [*[0.0]*3, 1.0]
 
     HATCH_LINEWIDTH    = 0.3
-    HATCH_IGNORE_DELTA = 0.001
+    HATCH_IGNORE_DELTA = 1e-6
 
     # ----------------------------------------------------------------
     # private stuff
@@ -93,14 +93,28 @@ class StatePlotter:
 
         return result
 
-    def _hatch_select(self, begin: int, phase: float) -> bool:
-        r1_begin = begin
-        r1_end   = begin + 1
-        r2_begin = begin - 3
-        r2_end   = begin - 2
+    def __hatch_select_range(self, begin: int) -> float:
+        return 1/6 + begin/8  - (.0 if begin <= 3 else 29/24)
+    def __hatch_select_isrange(self, r_begin: float, r_end: float,
+                               phase: float) -> bool:
+        if r_begin >= .0 and r_end < .0:
+            # BEGIN=3: phase >= 1/6 + 3/8 or phase <= -1/6 - 3/8
+            return phase >= r_begin or phase <= r_end
+        if r_begin < .0 and r_end > -1/6:
+            # BEGIN=3: phase <= 1/6 and phase >= -1/6
+            return abs(phase) <= abs(r_begin)
 
-        return phase >=  1/6 + r1_begin/8 and phase <=  1/6 + r1_end/8 \
-            or phase >= -1/6 + r2_begin/8 and phase <= -1/6 - r2_end/8
+        return phase >= r_begin and phase <= r_end
+    # BEGIN: [0..3] calculates phase range for
+    #               1/6 + BEGIN/8 .. 1/6 + (BEGIN + 1)/8
+    def _hatch_select(self, begin: int, phase: float) -> bool:
+        r1_begin = self.__hatch_select_range(begin)
+        r1_end   = self.__hatch_select_range(begin + 1)
+        r2_begin = self.__hatch_select_range(begin + 4)
+        r2_end   = self.__hatch_select_range(begin + 5)
+
+        return self.__hatch_select_isrange(r1_begin, r1_end, phase) \
+            or self.__hatch_select_isrange(r2_begin, r2_end, phase)
 
     def _prepare_plot(self, title: str) \
                             -> (ma.figure.Figure, ma.axes.Axes):
@@ -148,7 +162,7 @@ class StatePlotter:
                    or  cur_phase < -1 + self.HATCH_IGNORE_DELTA \
                    or  cur_phase >  1 - self.HATCH_IGNORE_DELTA:
                     hatch = None
-                elif self._hatch_select(-1, cur_phase):
+                elif self._hatch_select(3, cur_phase):
                     # TODO: Does not work ...
                     hatch = '-'
                 elif self._hatch_select(0, cur_phase):
