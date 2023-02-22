@@ -94,24 +94,24 @@ class StatePlotter:
         return result
 
     def __hatch_select_range(self, begin: int) -> float:
-        return 1/6 + begin/8  - (.0 if begin <= 3 else 29/24)
+        return 1/8 + begin/4  - (.0 if begin <= 3 else 2.)
     def __hatch_select_isrange(self, r_begin: float, r_end: float,
                                phase: float) -> bool:
         if r_begin >= .0 and r_end < .0:
-            # BEGIN=3: phase >= 1/6 + 3/8 or phase <= -1/6 - 3/8
+            # BEGIN=3: phase >= 1/8 + 3/4 or phase <= -1/8 - 3/4
             return phase >= r_begin or phase <= r_end
-        if r_begin < .0 and r_end > -1/6:
-            # BEGIN=3: phase <= 1/6 and phase >= -1/6
-            return abs(phase) <= abs(r_begin)
-
         return phase >= r_begin and phase <= r_end
-    # BEGIN: [0..3] calculates phase range for
-    #               1/6 + BEGIN/8 .. 1/6 + (BEGIN + 1)/8
+    # BEGIN: [0..3] test if phase is in range for
+    #               1/8 + BEGIN/4 .. 1/8    + (BEGIN + 1)/4
+    #            or opposite
+    #               1/8 + OPPOSITE/4 .. 1/8 + (OPPOSITE + 1)/4
+    # PHASE: Range [-PI .. PI]
     def _hatch_select(self, begin: int, phase: float) -> bool:
+        OPPOSITE = 4
         r1_begin = self.__hatch_select_range(begin)
         r1_end   = self.__hatch_select_range(begin + 1)
-        r2_begin = self.__hatch_select_range(begin + 4)
-        r2_end   = self.__hatch_select_range(begin + 5)
+        r2_begin = self.__hatch_select_range(begin + OPPOSITE)
+        r2_end   = self.__hatch_select_range(begin + OPPOSITE+1)
 
         return self.__hatch_select_isrange(r1_begin, r1_end, phase) \
             or self.__hatch_select_isrange(r2_begin, r2_end, phase)
@@ -163,7 +163,6 @@ class StatePlotter:
                    or  cur_phase >  1 - self.HATCH_IGNORE_DELTA:
                     hatch = None
                 elif self._hatch_select(3, cur_phase):
-                    # TODO: Does not work ...
                     hatch = '-'
                 elif self._hatch_select(0, cur_phase):
                     hatch = '/'
