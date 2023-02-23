@@ -27,6 +27,19 @@ import qutip.qip.device as dv
 # ********************************************************************
 
 class DefaultSim (SimState):
+
+    def __init__(self, N: int, cbits_N: int = -1):
+        super().__init__(N, cbits_N)
+
+        # members with setter methods
+        self.is_save_states_dec = False
+
+    # Output of Fock bases are decimal coded.
+    #
+    # default: FALSE
+    def set_is_save_states_dec(self, is_save_states_dec: bool):
+        self.is_save_states_dec = is_save_states_dec
+
     # ----------------------------------------------------------------
     # subclasses can override this
 
@@ -55,13 +68,15 @@ class DefaultSim (SimState):
         # Run statisitics for quantum circuit.
 
         self.inputset_statistics()
-        self.inputset_save_states_svg('statistics')
+        self.inputset_save_states_svg('statistics',
+                                      self.is_save_states_dec)
 
         # ************************************************************
         # Run an 'operator-level' circuit simulation.
 
         self.inputset_run_ol(ol_runs)
-        self.inputset_save_states_svg('operlevel')
+        self.inputset_save_states_svg('operlevel',
+                                      self.is_save_states_dec)
 
         # ************************************************************
         # Setup a processor for 'pulse-level' circuit simulation.
@@ -96,7 +111,8 @@ class DefaultSim (SimState):
         # Run a 'pulse-level' circuit simulation.
 
         self.processorset_run_pl(pl_runs)
-        self.inputset_save_states_svg('pulselevel')
+        self.inputset_save_states_svg('pulselevel',
+                                      self.is_save_states_dec)
 
         # ************************************************************
 

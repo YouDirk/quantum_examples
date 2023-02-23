@@ -41,12 +41,15 @@ class StatePlotter:
     LABEL_XTICK_FMT = "$\\left|\\psi_{%s}\\right>," \
                       + " \\varphi_{global} = %.2f \\pi$"
 
-    LABEL_LEGEND_FMT = "$\\left|%s\\right> \\mapsto" \
+    LABEL_LEGEND_FMT = "$\\left|%s%s\\right> \\mapsto" \
                        + " %%.2f \\angle %%.2f \\pi$"
-    LABEL_LEGEND_SIZE           = 12
-    LABEL_LEGEND_OFFSET_X       =  0.03
-    LABEL_LEGEND_OFFSET_Y       = -0.015
-    LABEL_LEGEND_HIDE_THRESHOLD =  0.02
+    LABEL_LEGEND_SIZE            = 12
+    LABEL_LEGEND_OFFSET_X        =  0.03
+    LABEL_LEGEND_OFFSET_Y        = -0.014
+    LABEL_LEGEND_SMALL_SIZE      =  8
+    LABEL_LEGEND_SMALL_OFFSET_Y  = -0.010
+    LABEL_LEGEND_SMALL_THRESHOLD =  0.05
+    LABEL_LEGEND_HIDE_THRESHOLD  =  0.03
 
     POLY_FACECOLOR_MAX_RGBA = [*[0.95]*3, 1.0]
     POLY_FACECOLOR_MIN_RGBA = [*[0.25]*3, 1.0]
@@ -87,9 +90,11 @@ class StatePlotter:
 
     def _labels_legend(self) -> list:
         result = []
+        code_str = '_{10}' if self.is_fock_dec else '_{2}'
 
         for i in range(self.n):
-            result.append(self.LABEL_LEGEND_FMT % (self._int2bin(i)))
+            fock_base = i if self.is_fock_dec else self._int2bin(i)
+            result.append(self.LABEL_LEGEND_FMT % (fock_base, code_str))
 
         return result
 
@@ -187,10 +192,17 @@ class StatePlotter:
 
                 if labels[j] == None: continue
 
+                if labels_prob[j] < self.LABEL_LEGEND_SMALL_THRESHOLD:
+                    fontsize       = self.LABEL_LEGEND_SMALL_SIZE
+                    label_offset_y = self.LABEL_LEGEND_SMALL_OFFSET_Y
+                else:
+                    fontsize       = self.LABEL_LEGEND_SIZE
+                    label_offset_y = self.LABEL_LEGEND_OFFSET_Y
+
                 axs.annotate(labels[j],
                   (self.t_arr[i] + self.LABEL_LEGEND_OFFSET_X,
-                               y + self.LABEL_LEGEND_OFFSET_Y),
-                  fontsize=self.LABEL_LEGEND_SIZE)
+                               y + label_offset_y),
+                  fontsize=fontsize)
 
         return fig, axs
 
@@ -200,6 +212,9 @@ class StatePlotter:
     def __init__(self, N: int):
         self.N = N
         self.n = 2**N
+
+        # members with setter methods
+        self.is_fock_dec = False
 
         # len(): SELF.PSI_COUNTER
         self.t_name_arr    = []
@@ -244,6 +259,12 @@ class StatePlotter:
             self.psi_phase_arr, cur_psi_phase_arr, cur_psi_phase_arr])
 
         self.psi_counter += 1
+
+    # Output of Fock bases are decimal coded.
+    #
+    # default: FALSE
+    def set_is_fock_dec(self, is_fock_dec: bool):
+        self.is_fock_dec = is_fock_dec
 
     def show(self,
              title: str='Unitary evolution of $\\left|\\psi\\right>$'):

@@ -260,8 +260,11 @@ class SimState:
     # for state: INPUT_SET
 
     # Plot input state to SVG file.
-    def inputset_save_states_svg(self, filename_postfix: str):
+    def inputset_save_states_svg(self, filename_postfix: str,
+                                 is_fock_dec: bool=False):
         self._assert_gr_equal(self._state.INPUT_SET)
+
+        self.plotter_state.set_is_fock_dec(is_fock_dec)
 
         filename = self.SVG_STATES_FILEMASK % (filename_postfix)
         try:
