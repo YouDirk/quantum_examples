@@ -59,37 +59,21 @@ class SimState:
                    % (super().__str__().split('.')[-1], self.value)
 
     # ----------------------------------------------------------------
-    # constants and some utility functions
+    # static utility functions
 
-    CIRC_MEASURE_LABEL = "M_all"
-
-    FILENAME_PREFIX      = os.path.splitext(sys.argv[0])[0]
-
-    SVG_FILENAME         = FILENAME_PREFIX + '-circ.svg'
-    QASM_FILENAME        = FILENAME_PREFIX + '-circ.qasm'
-
-    SVG_PULSE_FILEMASK  = "%s-pulse-%%s.svg" % (FILENAME_PREFIX)
-    SVG_STATES_FILEMASK = "%s-states-%%s.svg" % (FILENAME_PREFIX)
-
-    def qindex(self, i: int) -> int:
-        return self.N - i - 1
-
-    def cindex(self, i: int) -> int:
-        return self.cbits_N - i - 1
-
-    def state_toint(self, state: qt.Qobj) -> int:
+    def state_toint(state: qt.Qobj) -> int:
         return sum([i*int(state[i][0][0].real)
                     if state[i][0][0] != 0.0 else 0
                     for i in range(state.shape[0])])
 
-    def state_tobit(self, state: qt.Qobj, n_shift: int) -> int:
-        number = self.state_toint(state)
+    def state_tobit(state: qt.Qobj, n_shift: int) -> int:
+        number = SimState.state_toint(state)
 
         # ABS() required to prevent masking negative 2-complements
         # numbers.
         return 1 if abs(number) & (1 << n_shift) else 0
 
-    def basis_fromint(self, N: int, number: int) -> qt.Qobj:
+    def basis_fromint(N: int, number: int) -> qt.Qobj:
         num_abs = abs(number)
 
         if num_abs >= 2**N:
@@ -107,6 +91,25 @@ class SimState:
             num_abs >>= 1
 
         return result if number >= 0 else -result
+
+    # ----------------------------------------------------------------
+    # constants and some utility functions
+
+    CIRC_MEASURE_LABEL = "M_all"
+
+    FILENAME_PREFIX      = os.path.splitext(sys.argv[0])[0]
+
+    SVG_FILENAME         = FILENAME_PREFIX + '-circ.svg'
+    QASM_FILENAME        = FILENAME_PREFIX + '-circ.qasm'
+
+    SVG_PULSE_FILEMASK  = "%s-pulse-%%s.svg" % (FILENAME_PREFIX)
+    SVG_STATES_FILEMASK = "%s-states-%%s.svg" % (FILENAME_PREFIX)
+
+    def qindex(self, i: int) -> int:
+        return self.N - i - 1
+
+    def cindex(self, i: int) -> int:
+        return self.cbits_N - i - 1
 
     # ----------------------------------------------------------------
 

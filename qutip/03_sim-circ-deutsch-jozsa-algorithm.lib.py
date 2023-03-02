@@ -110,7 +110,7 @@ class MySim (el.NoNoiseSim):
 
         f_balanced = -1
         for state, count in sim_results.values():
-            number = self.state_toint(state)
+            number = MySim.state_toint(state)
             x = abs(number) >> 1
 
             if f_balanced < 0: f_balanced = x
@@ -140,10 +140,10 @@ uf = Uf(F_DEF)
 
 print("\nChosen: f(x) via F_DEF\n")
 for i in range(2**N):
-    x = sim.basis_fromint(N, i)
+    x = MySim.basis_fromint(N, i)
     f = uf * qt.tensor(x, qt.basis(2, 0))
 
-    print("  f(|%d>) = |%s>" % (i, sim.state_tobit(f, 0)))
+    print("  f(|%d>) = |%s>" % (i, MySim.state_tobit(f, 0)))
 
 # ********************************************************************
 # The quantum circuit to simulate.
@@ -169,7 +169,7 @@ sim.circalloced_load(circ)
 #
 #   q_1 (cross) q_0 = [0 1 2 3]
 #
-sim.circloaded_set_input(sim.basis_fromint(N+1, 0x1))
+sim.circloaded_set_input(MySim.basis_fromint(N+1, 0x1))
 
 # ********************************************************************
 # Run all file outputs, statistics and simulations.
