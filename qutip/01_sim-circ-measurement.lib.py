@@ -55,6 +55,8 @@ class MySim (el.NoNoiseSim):
 
     def meas_povm_completeness_check(self, m: list):
         completeness = sum([_m.dag() * _m for _m in m])
+
+        # sum(M_m.dag() * M_m) = I
         if completeness != qt.qeye([2]*self.N):
             raise AssertionError(
                 "M_m are not satisfying the completeness equation!")
@@ -83,6 +85,12 @@ class MySim (el.NoNoiseSim):
         if not state.isket:
             raise AssertionError("STATE is not a ket vector!")
 
+        # Because
+        #   E_m = eigenv_m * M_m.dagger * M_m
+        #   O = sum( E_m )
+        #
+        # => The Eigendecomposition of O is
+        #   O = sum( eigenv_m * Mdag_M ) = sum( energy_m * Mdag_M )
         l, v = o.eigenstates()
         povm_vals = {}
         for i in range(len(l)):
@@ -97,15 +105,20 @@ class MySim (el.NoNoiseSim):
         mdag_m = [m for _, m in povm_vals.values()]
         energies = [v for v, _ in povm_vals.values()]
 
+        # sum(M_m.dag() * M_m) = I
         self.meas_povm_completeness_check(mdag_m)
 
         result_probs = []
         result_state_collapsed = []
         result_energies = []
         for i in range(len(energies)):
+            # p(m) = <state| M_m.dag()*M_m |state>
             prob = abs((state.dag() * mdag_m[i] * state)[0][0][0])
+
+            # ignore measurement operators with p=0.0
             if prob == .0: continue
 
+            # state_collapsed = M_m |state> / sqrt(p(m))
             state_collapsed = mdag_m[i] * state / np.sqrt(prob)
 
             result_probs.append(prob)
@@ -119,6 +132,8 @@ class MySim (el.NoNoiseSim):
             raise AssertionError("STATE is not a ket vector!")
 
         probs, states_collapsed, energies = self.measure_probs(state, o)
+
+        # select one of the possible states with probability PROBS
         i = np.random.choice(range(len(probs)), p=probs)
 
         return energies[i], states_collapsed[i]
@@ -129,6 +144,9 @@ class MySim (el.NoNoiseSim):
         psi_out = self.CIRC_AS_OP * self.input
 
         # ---
+        # Projective measurement of bit 0.  Measuring
+        #   * energy -1 if first bit is |0>
+        #   * energy  1 if first bit is |1>
 
         P0_x0 = self.meas_proj_projector(
             [MySim.basis_fromint(self.N, 0),
@@ -140,10 +158,16 @@ class MySim (el.NoNoiseSim):
 
         energies0 = [-1., 1.]
 
+        # Projective measurement is just a special case of POVM
+        # measurement.
         E0 = self.meas_povm_e(P0, energies0)
+        # POVM measurement is just a special case of Obs measurement.
         O0 = self.meas_obs_o(E0)
 
         # ---
+        # Projective measurement of bit 1.  Measuring
+        #   * energy -1 if second bit is |0>
+        #   * energy  1 if second bit is |1>
 
         P1_0x = self.meas_proj_projector(
             [MySim.basis_fromint(self.N, 0),
@@ -155,7 +179,10 @@ class MySim (el.NoNoiseSim):
 
         energies1 = [-1., 1.]
 
+        # Projective measurement is just a special case of POVM
+        # measurement.
         E1 = self.meas_povm_e(P1, energies1)
+        # POVM measurement is just a special case of Obs measurement.
         O1 = self.meas_obs_o(E1)
 
         # ---
@@ -167,25 +194,30 @@ class MySim (el.NoNoiseSim):
         energy, psi_coll = [None]*4, [None]*4
         energy[0], psi_coll[0] = self.measure(psi_out,     O0)
         energy[1], psi_coll[1] = self.measure(psi_coll[0], O1)
+        # The first measurement lets collapse PSI.  The following
+        # measurements have the same results.
         energy[2], psi_coll[2] = self.measure(psi_coll[1], O0)
         energy[3], psi_coll[3] = self.measure(psi_coll[2], O1)
 
         print("")
         for j in range(len(probs)):
-            print("**** O%d: measure statistics, self implemented"
+            print("**** O%d: measurement statistics, self implemented"
                   % (j))
             for i in range(len(probs[j])):
                 print("****   energy % 2f with p=%f, collapsed=%s"
                       % (energ[j][i], probs[j][i],
                          list(coll[j][i].trans()[0][0])))
 
-        print("**** measuring ordered: O0 -> O1 -> O0 -> O1")
+        print("**** measurement: ordered O0 -> O1 -> O0 -> O1")
         print("****   |psi_out> = %s" % (list(psi_out.trans()[0][0])))
         for j in range(len(energy)):
             print("****   energy % 2f, collapsed=%s"
                   % (energy[j], list(psi_coll[j].trans()[0][0])))
-        print("****   |psi_measured> = %s\n" % (list(psi_coll[-1].trans()[0][0])))
+        print("****   |psi_measured> = %s = |%d>\n"
+              % (list(psi_coll[-1].trans()[0][0]),
+                 MySim.state_toint(psi_coll[-1])))
 
+        # nothing to do here ...
         for state, count in sim_results.values(): pass
 
 # ********************************************************************
