@@ -42,7 +42,8 @@ class SimState:
     # SIM_RESULTS argument has the type:
     #
     #   SIM_RESULTS['hash_key'] = [state: qt.Qobj, count: int]
-    def analyse_sim_result(self, sim_results: dict): pass
+    def analyse_sim_result(self, sim_results: dict, sim_runs: int):
+        pass
 
     # ----------------------------------------------------------------
     # private stuff
@@ -166,14 +167,15 @@ class SimState:
         self.plotter_state.add(self.input, 'in')
 
         plot_state = qt.zero_ket(2**self.N, dims=[[2]*self.N, [1]*self.N])
+        sim_runs = len(map_result)
         for state, count in results.values():
-            freq = count/len(map_result)
+            freq = count/sim_runs
             plot_state += np.sqrt(freq) * state
             print("Frequency %s for %s" % (freq,
                                            self._state2str(state)))
         self.plotter_state.add(plot_state, 'out')
 
-        self.analyse_sim_result(results)
+        self.analyse_sim_result(results, sim_runs)
 
     # ----------------------------------------------------------------
     # for state: INITIALIZED

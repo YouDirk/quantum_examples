@@ -140,7 +140,7 @@ class MySim (el.NoNoiseSim):
 
     # ----------------------------------------------------------------
 
-    def analyse_sim_result(self, sim_results: dict):
+    def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         psi_out = self.CIRC_AS_OP * self.input
 
         # ---
@@ -185,11 +185,15 @@ class MySim (el.NoNoiseSim):
         # POVM measurement is just a special case of Obs measurement.
         O1 = self.meas_obs_o(E1)
 
+        # Same as first measuring obs O0 followed by measunring O1.
+        O2 = O0 * O1
+
         # ---
 
-        probs, coll, energ = [None]*2, [None]*2, [None]*2
+        probs, coll, energ = [None]*3, [None]*3, [None]*3
         probs[0], coll[0], energ[0] = self.measure_probs(psi_out, O0)
         probs[1], coll[1], energ[1] = self.measure_probs(psi_out, O1)
+        probs[2], coll[2], energ[2] = self.measure_probs(psi_out, O2)
 
         energy, psi_coll = [None]*4, [None]*4
         energy[0], psi_coll[0] = self.measure(psi_out,     O0)
@@ -213,12 +217,32 @@ class MySim (el.NoNoiseSim):
         for j in range(len(energy)):
             print("****   energy % 2f, collapsed=%s"
                   % (energy[j], list(psi_coll[j].trans()[0][0])))
-        print("****   |psi_measured> = %s = |%d>\n"
+        print("****   |psi_measured> = %s = |%d>"
               % (list(psi_coll[-1].trans()[0][0]),
                  MySim.state_toint(psi_coll[-1])))
 
-        # nothing to do here ...
-        for state, count in sim_results.values(): pass
+        DELTA_PROB = 0.05
+        meas_colls_final = coll[2]
+        meas_probs_final = probs[2]
+        is_prob_diff = False
+        for state, count in sim_results.values():
+            sim_freq = count/sim_runs
+
+            meas_i = sum([j if state == meas_colls_final[j] else 0
+                          for j in range(len(meas_colls_final))])
+
+            delta_p = abs(sim_freq - meas_probs_final[meas_i])
+            if delta_p < DELTA_PROB: continue
+
+            is_prob_diff = True
+            print(("****\n**** Result: Difference! delta_p=%f, p_sim=%f,"
+                   + " p_meas=%f for collapsed=%s.\n")
+                  % (delta_p, sim_freq, meas_probs_final[meas_i],
+                     meas_colls_final[meas_i].trans()))
+
+        if not is_prob_diff:
+            print("****\n**** Result: Success!  No difference between"
+                  + " simulation and implemented measurement.\n")
 
 # ********************************************************************
 

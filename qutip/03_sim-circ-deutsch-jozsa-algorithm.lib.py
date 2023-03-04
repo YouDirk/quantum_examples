@@ -89,7 +89,7 @@ def Uf(f_def: str) -> qt.Qobj:
 # Output result
 
 class MySim (el.NoNoiseSim):
-    def analyse_sim_result(self, sim_results: dict):
+    def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         print(
           "\n**** The output x_out is to be interpreted as:"
           + "\n****   - f(x) is balanced if x_out != |0000>"

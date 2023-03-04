@@ -86,7 +86,7 @@ def Uf(f_def: str) -> qt.Qobj:
 # Output result
 
 class MySim (el.DefaultSim):
-    def analyse_sim_result(self, sim_results: dict):
+    def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         print(
           "\n**** The MSB x_1 is to be interpreted as 'f(|0>) XOR"
           + " f(|1>)'.  That means, it is |0> if f(x)"
