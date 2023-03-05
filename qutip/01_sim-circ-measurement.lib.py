@@ -48,7 +48,7 @@ class MySim (el.NoNoiseSim):
                     "LEN(BASIS) needs to be %d, but is %d!"
                     % (2**self.N, v.shape[0]))
 
-        # P_m = sum ( |bases><bases| )
+        # P_m = sum{i}( |basis_i><basis_i| )
         return sum([bases[i].proj() for i in range(len(bases))])
 
     # ----------------------------------------------------------------
@@ -56,7 +56,7 @@ class MySim (el.NoNoiseSim):
     def meas_povm_completeness_check(self, m: list):
         completeness = sum([_m.dag() * _m for _m in m])
 
-        # sum(M_m.dag() * M_m) = I
+        # sum{m}( M_m.dag() * M_m ) = I
         if completeness != qt.qeye([2]*self.N):
             raise AssertionError(
                 "M_m are not satisfying the completeness equation!")
@@ -68,14 +68,14 @@ class MySim (el.NoNoiseSim):
 
         self.meas_povm_completeness_check(m)
 
-        # E_m = eigenv_m * M_m.dagger * M_m
+        # E_m = eigenv_m * M_m.dagger*M_m = m * M_m.dagger*M_m
         return [eigenv[i] * m[i].dag() * m[i]
                 for i in range(len(eigenv))]
 
     # ----------------------------------------------------------------
 
     def meas_obs_o(self, e: list) -> qt.Qobj:
-        # O = sum( E_m )
+        # O = sum{m}( E_m )
         return sum(e)
 
     # ----------------------------------------------------------------
@@ -85,12 +85,23 @@ class MySim (el.NoNoiseSim):
         if not state.isket:
             raise AssertionError("STATE is not a ket vector!")
 
-        # Because
-        #   E_m = eigenv_m * M_m.dagger * M_m
-        #   O = sum( E_m )
+        # The Eigendecomposition (value l_i, vectors v_i1, v_i2, ...)
+        # of O is
         #
-        # => The Eigendecomposition of O is
-        #   O = sum( eigenv_m * Mdag_M ) = sum( energy_m * Mdag_M )
+        #   O = sum{i}( l_i      * ( v_i1*v_i1.dag() + v_i2*v_i2.dag() ) )
+        #     = sum{i}( energy_i *              M_i.dag()*M_i            )
+        #     = sum{i}(          E_i                                     )
+        #
+        # Strong in formulas the lowercased 'm' is the eigenvalue,
+        # above namely l_m = energy_m.  And the eigenvectors (v_i
+        # above) are the bases p_m1, p_m2, ... (one or more per 'm')
+        # of the projectors P_m (exactly one per 'm') to the
+        # eigenvalue m.  Then the Eigendecomposition looks like:
+        #
+        #   O = sum{m}( m * ( p_m1*p_m1.dag() + p_m2*p_m2.dag() ) )
+        #     = sum{m}( m *              M_m.dag()*M_m            )
+        #     = sum{m}(   E_m                                     )
+        #
         l, v = o.eigenstates()
         povm_vals = {}
         for i in range(len(l)):
@@ -195,14 +206,6 @@ class MySim (el.NoNoiseSim):
         probs[1], coll[1], energ[1] = self.measure_probs(psi_out, O1)
         probs[2], coll[2], energ[2] = self.measure_probs(psi_out, O2)
 
-        energy, psi_coll = [None]*4, [None]*4
-        energy[0], psi_coll[0] = self.measure(psi_out,     O0)
-        energy[1], psi_coll[1] = self.measure(psi_coll[0], O1)
-        # The first measurement lets collapse PSI.  The following
-        # measurements have the same results.
-        energy[2], psi_coll[2] = self.measure(psi_coll[1], O0)
-        energy[3], psi_coll[3] = self.measure(psi_coll[2], O1)
-
         print("")
         for j in range(len(probs)):
             print("**** O%d: measurement statistics, self implemented"
@@ -212,38 +215,59 @@ class MySim (el.NoNoiseSim):
                       % (energ[j][i], probs[j][i],
                          list(coll[j][i].trans()[0][0])))
 
+        # ---
+
+        energy, psi_coll = [None]*4, [None]*4
+        energy[0], psi_coll[0] = self.measure(psi_out,     O0)
+        energy[1], psi_coll[1] = self.measure(psi_coll[0], O1)
+        # The first measurement lets collapse PSI.  The following
+        # measurements have the same results.
+        energy[2], psi_coll[2] = self.measure(psi_coll[1], O0)
+        energy[3], psi_coll[3] = self.measure(psi_coll[2], O1)
+
+        psi_measured = psi_coll[-1]
         print("**** measurement: ordered O0 -> O1 -> O0 -> O1")
         print("****   |psi_out> = %s" % (list(psi_out.trans()[0][0])))
         for j in range(len(energy)):
             print("****   energy % 2f, collapsed=%s"
                   % (energy[j], list(psi_coll[j].trans()[0][0])))
         print("****   |psi_measured> = %s = |%d>"
-              % (list(psi_coll[-1].trans()[0][0]),
-                 MySim.state_toint(psi_coll[-1])))
+              % (list(psi_measured.trans()[0][0]),
+                 MySim.state_toint(psi_measured)))
 
-        DELTA_PROB = 0.05
-        meas_colls_final = coll[2]
-        meas_probs_final = probs[2]
+        # ---
+
+        DELTA_P_THRESHOLD = 0.05
+        meas_colls_final = coll[-1]
+        meas_probs_final = probs[-1]
         is_prob_diff = False
         for state, count in sim_results.values():
             sim_freq = count/sim_runs
 
-            meas_i = sum([j if state == meas_colls_final[j] else 0
-                          for j in range(len(meas_colls_final))])
+            meas_i = sum([
+              i if (state.dag() * meas_colls_final[i])[0][0][0] != .0
+              else 0
+              for i in range(len(meas_colls_final))])
 
             delta_p = abs(sim_freq - meas_probs_final[meas_i])
-            if delta_p < DELTA_PROB: continue
+            if delta_p < DELTA_P_THRESHOLD: continue
 
             is_prob_diff = True
-            print(("****\n**** Result: Difference! delta_p=%f, p_sim=%f,"
-                   + " p_meas=%f for collapsed=%s.\n")
+            print(("****\n**** Result: Difference!  delta_p=%f,"
+                   + " p_sim=%f, p_meas=%f for collapsed=%s.")
                   % (delta_p, sim_freq, meas_probs_final[meas_i],
-                     meas_colls_final[meas_i].trans()))
+                     list(meas_colls_final[meas_i].trans()[0][0])))
 
         if not is_prob_diff:
             print("****\n**** Result: Success!  No difference between"
                   + " simulation and implemented measurement.\n")
+        else: print("")
 
+
+    # End of def analyse_sim_result()
+    # ----------------------------------------------------------------
+
+# End of class MySim
 # ********************************************************************
 
 sim = MySim(N=N)
@@ -269,6 +293,6 @@ sim.circloaded_set_input(circ_input)
 # ********************************************************************
 # Run all file outputs, statistics and simulations.
 
-sim.inputset_run_all(ol_runs=2000, pl_runs=250)
+sim.inputset_run_all(ol_runs=2000, pl_runs=800)
 
 # ********************************************************************
