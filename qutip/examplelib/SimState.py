@@ -96,8 +96,6 @@ class SimState:
     # ----------------------------------------------------------------
     # constants and some utility functions
 
-    CIRC_MEASURE_LABEL = "M_all"
-
     FILENAME_PREFIX      = os.path.splitext(sys.argv[0])[0]
 
     SVG_FILENAME         = FILENAME_PREFIX + '-circ.svg'
@@ -116,11 +114,11 @@ class SimState:
 
     # N      : Number of quantum bits for circuit.
     # CBITS_N: Number of classical bits for measuring.
-    #          Set to 0 to get p**2 results in state vector.
-    def __init__(self, N: int, cbits_N: int = -1):
+    def __init__(self, N: int, cbits_N: int = 0):
         self.N = N
-        self.cbits_N = cbits_N if cbits_N >= 0 else N
+        self.cbits_N = cbits_N
 
+        self.measurement_ops = qt.tensor([qt.sigmaz()]*self.N)
         self.plotter_state = StatePlotter(self.N)
 
         self.state = self._state.INITIALIZED
@@ -180,6 +178,10 @@ class SimState:
     # ----------------------------------------------------------------
     # for state: INITIALIZED
 
+    def init_set_measurement_ops(self, measurement_ops):
+        self._assert_gr_equal(self._state.INITIALIZED)
+        self.measurement_ops = measurement_ops
+
     # Returns an empty circuit to simulate.  Add this via
     # CIRCALLOCED_LOAD().
     def init_new_circ(self) -> cc.QubitCircuit:
@@ -199,11 +201,6 @@ class SimState:
         self._assert(self._state.CIRC_ALLOCED)
 
         self.circ = circ
-
-        for i in range(self.cbits_N):
-            circ.add_measurement(
-              self.CIRC_MEASURE_LABEL, targets=self.qindex(i),
-              classical_store=self.cindex(i))
 
         print("%s\n%s"
               % (self.circ.gates, self.circ.propagators(expand=False)))
@@ -313,8 +310,9 @@ class SimState:
     def _inputset_run_ol_map(self, i: int, sim: cc.CircuitSimulator):
         result = sim.run(self.input)
 
-        measurement = result.get_final_states(0)
-        hash_key = str(measurement)
+        _, measurement = qt.measurement.measure(
+                         result.get_final_states(0), self.measurement_ops)
+        hash_key       = str(measurement)
 
         return hash_key, measurement
 
@@ -350,18 +348,11 @@ class SimState:
             tslots = 40
             load_circuit_args = {'num_tslots': tslots, 'evo_time': tslots}
 
-        # Measurements in circuit seems not to be supported for
-        # pulse-level simulation.  We are measuring manually at the
-        # end of every simulation.
-        circ = copy.deepcopy(self.circ)
-        circ.remove_gate_or_measurement(name=self.CIRC_MEASURE_LABEL,
-                                        remove='all')
-
         processor.pulse_mode = "discrete"
 
         # Argument (, compiler=GateCompiler()) sub-class required for
         # user defined gates.
-        processor.load_circuit(circ, **load_circuit_args)
+        processor.load_circuit(self.circ, **load_circuit_args)
 
         self.noise = noise
         if noise:
@@ -404,8 +395,9 @@ class SimState:
         result = self.processor.run_state(self.input)
 
         _, measurement = qt.measurement.measure(
-          result.states[-1], qt.tensor([qt.sigmaz()]*self.N))
-        hash_key = str(measurement)
+                         result.states[-1], self.measurement_ops)
+        hash_key       = str(measurement)
+
         return hash_key, measurement
 
     # Run a 'pulse-level' circuit simulation.

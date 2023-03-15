@@ -28,7 +28,7 @@ import qutip.qip.device as dv
 
 class DefaultSim (SimState):
 
-    def __init__(self, N: int, cbits_N: int = -1):
+    def __init__(self, N: int, cbits_N: int = 0):
         super().__init__(N, cbits_N)
 
         # members with setter methods

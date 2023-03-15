@@ -263,7 +263,6 @@ class MySim (el.NoNoiseSim):
                   + " simulation and implemented measurement.\n")
         else: print("")
 
-
     # End of def analyse_sim_result()
     # ----------------------------------------------------------------
 
