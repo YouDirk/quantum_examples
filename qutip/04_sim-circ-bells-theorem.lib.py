@@ -62,11 +62,41 @@ sim.circloaded_set_input(
 # Run all file outputs, statistics and simulations.
 
 # TODO ...
+
+# Rotation Theta=phi/2 around Y in Bloch sphere coordinates.
 #
-# Here measuring to |+> basis, means a rotation of sigma_z around
-# y-axis with Theta=pi/2
-theta = 1/2 * 2*np.pi
-o = qt.tensor([qo.ry(theta) * qt.sigmaz()]*sim.N)
+#  => phi = 2 * Theta
+#         = 2 * (1/2 * 2*pi) = pi
+phi = 1/2 * 2*np.pi
+
+# Measuring first bit (bit 0)
+#o_kx = qt.tensor(qt.qeye(2), qo.ry(phi)*qt.sigmaz())
+#
+# Measuring second bit (bit 1)
+#o_xk = qt.tensor(qo.ry(phi)*qt.sigmaz(), qt.qeye(2))
+#
+# Measuring both bits at the !THE SAME TIME!
+#o_both = o_kx * o_xk
+
+# Same as O_BOTH, but shorter code.
+#
+# The relation is, for N in interval [0, n-1]:
+#
+#   O = tensor{N}( [R_y(phi)*sigmaz] )
+#     = product{N}( O_N )
+#     = product{N}( I_2^{n - N - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^N)
+#     =    I_2^{2 - 1 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^1
+#        * I_2^{2 - 0 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^0
+#
+#     =    R_y(phi)*sigmaz (tensor) I_2^1
+#        * I_2^1 (tensor) R_y(phi)*sigmaz
+#     =    O_KX * O_XK
+#
+# For phi=pi it results in
+#   O = tensor{N}( [sigmax] )
+#     = sigmax (tensor) I_2^1 * I_2^1 (tensor) sigmax
+o = qt.tensor([qo.ry(phi) * qt.sigmaz()]*sim.N)
+
 sim.init_set_measurement_ops(o)
 
 sim.inputset_run_all(ol_runs=2000, pl_runs=250)
