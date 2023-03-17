@@ -38,6 +38,35 @@ class SimState:
     # ----------------------------------------------------------------
     # subclasses can override this
 
+    # Not thread safe, do not access member variables!  Just use the
+    # method parameters and local variables!
+    #
+    # Called in every simulation instance before simulation starts.
+    #
+    # SIM_INPUT: The predefined input of the circuit during
+    #            simulation.
+    #
+    # RETURN: Your custom ciruit input.
+    def pre_simulation(self, sim_input: qt.Qobj) -> qt.Qobj:
+        return sim_input
+
+    # Not thread safe, do not access member variables!  Just use the
+    # method parameters and local variables!
+    #
+    # Called in every simulation instance after simulation finished
+    # and before measurement starts.
+    #
+    # SIM_OUTPUT: The predefined output of the circuit during
+    #             simulation.
+    # MEASUREMENT_OPS: Either or:
+    #                  * an Obs of type qt.Qobj
+    #                  * list of Measurement Operators
+    #
+    # RETURN: Your custom ciruit (SIM_OUTPUT, MEASUREMENT_OPS).
+    def pre_measurement(self, sim_output: qt.Qobj,
+                        measurement_ops: object) -> (qt.Qobj, object):
+        return sim_output, measurement_ops
+
     # Function for additional output after simulation.  The
     # SIM_RESULTS argument has the type:
     #
@@ -308,10 +337,12 @@ class SimState:
     # ***
 
     def _inputset_run_ol_map(self, i: int, sim: cc.CircuitSimulator):
-        result = sim.run(self.input)
+        sim_input = self.pre_simulation(self.input)
+        result = sim.run(sim_input)
 
-        _, measurement = qt.measurement.measure(
-                         result.get_final_states(0), self.measurement_ops)
+        sim_output, meas_ops = self.pre_measurement(
+                     result.get_final_states(0), self.measurement_ops)
+        _, measurement = qt.measurement.measure(sim_output, meas_ops)
         hash_key       = str(measurement)
 
         return hash_key, measurement
@@ -392,10 +423,12 @@ class SimState:
     # ***
 
     def _processorset_run_pl_map(self, i: int, processor: dv.Processor):
-        result = self.processor.run_state(self.input)
+        sim_input = self.pre_simulation(self.input)
+        result = self.processor.run_state(sim_input)
 
-        _, measurement = qt.measurement.measure(
-                         result.states[-1], self.measurement_ops)
+        sim_output, meas_ops = self.pre_measurement(
+                               result.states[-1], self.measurement_ops)
+        _, measurement = qt.measurement.measure(sim_output, meas_ops)
         hash_key       = str(measurement)
 
         return hash_key, measurement

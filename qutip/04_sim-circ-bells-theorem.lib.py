@@ -28,10 +28,74 @@ import qutip.qip.operations as qo
 # Output result
 
 class MySim (el.DefaultSim):
-    def analyse_sim_result(self, sim_results: dict, sim_runs: int):
-        print("\n**** TODO !\n")
+    def pre_measurement(self, sim_output: qt.Qobj,
+                        measurement_ops: object) -> (qt.Qobj, object):
+        # Rotation Theta=phi/2 around Y in Bloch sphere coordinates.
+        #
+        # Measuring is to sigmax (means to |+> basis) if
+        #  phi = 2 * Theta
+        #      = 2 * (1/2 * 2*pi) = pi
 
-        for state, count in sim_results.values(): pass
+        # TODO
+        match np.random.choice(range(3)):
+            case 0:
+                # O(0, 1/8*pi)
+                phi = [0, 1/2*np.pi]
+            case 1:
+                phi = [0, 1/2*np.pi]
+            case 2:
+                phi = [0, 1/2*np.pi]
+            case _:
+                raise AssertionError("Just 3 combinations are possible!")
+
+        # Measuring first bit (bit 0)
+        #o_kx = qt.tensor(qt.qeye(2), qo.ry(phi)*qt.sigmaz())
+        #
+        # Measuring second bit (bit 1)
+        #o_xk = qt.tensor(qo.ry(phi)*qt.sigmaz(), qt.qeye(2))
+        #
+        # Measuring both bits at the !THE SAME TIME!
+        #o_both = o_kx * o_xk
+
+        # Same as O_BOTH, but shorter code.
+        #
+        # The relation is, for N in interval [0, n-1]:
+        #
+        #   O = tensor{N}( [R_y(phi)*sigmaz] )
+        #     = product{N}( O_N )
+        #     = product{N}( I_2^{n - N - 1} (tensor) R_y(phi)*sigmaz
+        #                   (tensor) I_2^N )
+        #     =   I_2^{2 - 1 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^1
+        #       * I_2^{2 - 0 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^0
+        #
+        #     =   R_y(phi)*sigmaz (tensor) I_2^1
+        #       * I_2^1 (tensor) R_y(phi)*sigmaz
+        #     =   O_KX * O_XK
+        #
+        # For phi=pi it results in
+        #   O = tensor{N}( [sigmax] )
+        #     = sigmax (tensor) I_2^1 * I_2^1 (tensor) sigmax
+
+        meas_o = qt.tensor(qo.ry(phi[1]) * qt.sigmaz(),
+                           qo.ry(phi[0]) * qt.sigmaz())
+
+        return sim_output, meas_o
+
+    def analyse_sim_result(self, sim_results: dict, sim_runs: int):
+        # TODO
+        max_00 = .0
+        for state, count in sim_results.values():
+            sim_freq = count/sim_runs
+
+            if state[0][0][0] == .0: continue
+
+            max_00 = sim_freq if sim_freq > max_00 else max_00
+
+        print(("\n**** TODO! max_00=%s"
+               + "\n**** calculated: cos(1/8 * pi)**2 * cos(2/8 * pi)**2"
+               + "\n****   = (2 + sqrt(2))/8"
+               + "\n****   = 0.426776695296637\n")
+              % (max_00))
 
 # ********************************************************************
 
@@ -61,44 +125,6 @@ sim.circloaded_set_input(
 # ********************************************************************
 # Run all file outputs, statistics and simulations.
 
-# TODO ...
-
-# Rotation Theta=phi/2 around Y in Bloch sphere coordinates.
-#
-#  => phi = 2 * Theta
-#         = 2 * (1/2 * 2*pi) = pi
-phi = 1/2 * 2*np.pi
-
-# Measuring first bit (bit 0)
-#o_kx = qt.tensor(qt.qeye(2), qo.ry(phi)*qt.sigmaz())
-#
-# Measuring second bit (bit 1)
-#o_xk = qt.tensor(qo.ry(phi)*qt.sigmaz(), qt.qeye(2))
-#
-# Measuring both bits at the !THE SAME TIME!
-#o_both = o_kx * o_xk
-
-# Same as O_BOTH, but shorter code.
-#
-# The relation is, for N in interval [0, n-1]:
-#
-#   O = tensor{N}( [R_y(phi)*sigmaz] )
-#     = product{N}( O_N )
-#     = product{N}( I_2^{n - N - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^N)
-#     =    I_2^{2 - 1 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^1
-#        * I_2^{2 - 0 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^0
-#
-#     =    R_y(phi)*sigmaz (tensor) I_2^1
-#        * I_2^1 (tensor) R_y(phi)*sigmaz
-#     =    O_KX * O_XK
-#
-# For phi=pi it results in
-#   O = tensor{N}( [sigmax] )
-#     = sigmax (tensor) I_2^1 * I_2^1 (tensor) sigmax
-o = qt.tensor([qo.ry(phi) * qt.sigmaz()]*sim.N)
-
-sim.init_set_measurement_ops(o)
-
-sim.inputset_run_all(ol_runs=2000, pl_runs=250)
+sim.inputset_run_all(ol_runs=20000, pl_runs=500)
 
 # ********************************************************************
