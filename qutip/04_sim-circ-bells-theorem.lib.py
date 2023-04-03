@@ -101,20 +101,26 @@ class MySim (el.DefaultSim):
 
     def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         # TODO
+        DELTA_ENERGY_THRESHOLD = 1e-6
+
         n = 0x0
+        energy_n = -1
         max_n = .0
-        for state, count in sim_results.values():
+
+        p_result = .0
+        for energy, collapsed, count in sim_results.values():
             sim_freq = count/sim_runs
 
-            if state[n][0][0] == .0: continue
+            delta_energy = abs(energy - energy_n)
+            if delta_energy > DELTA_ENERGY_THRESHOLD: continue
 
-            max_n = sim_freq if sim_freq > max_n else max_n
+            p_result += sim_freq
 
-        print(("\n**** TODO! n=%d, max_n=%s"
+        print(("\n**** TODO! n=%d, energy=%d, p_result=%s"
                + "\n**** calculated: cos(1/8 * pi)**2 * cos(2/8 * pi)**2"
                + "\n****   = (2 + sqrt(2))/8"
                + "\n****   = 0.426776695296637\n")
-              % (n, max_n))
+              % (n, energy_n, p_result))
 
 # ********************************************************************
 

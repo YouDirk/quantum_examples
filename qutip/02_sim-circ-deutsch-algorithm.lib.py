@@ -96,8 +96,8 @@ class MySim (el.DefaultSim):
 
         f_balanced = -1
 
-        for state, count in sim_results.values():
-            cur = MySim.state_tobit(state, 1)
+        for energy, collapsed, count in sim_results.values():
+            cur = MySim.state_tobit(collapsed, 1)
 
             if f_balanced < 0: f_balanced = cur
 
@@ -125,8 +125,8 @@ uf = Uf(F_DEF)
 
 print("\nChosen: f(x) via F_DEF\n")
 print("  f(|0>) = |%d>\n  f(|1>) = |%d>"
-  % (MySim.state_tobit(uf * MySim.basis_fromint(2, 0x0), 0),
-     MySim.state_tobit(uf * MySim.basis_fromint(2, 0x2), 0)
+  % (MySim.state_tobit(uf * MySim.int_tofock(2, 0x0), 0),
+     MySim.state_tobit(uf * MySim.int_tofock(2, 0x2), 0)
     ))
 
 # ********************************************************************
@@ -153,7 +153,7 @@ sim.circalloced_load(circ)
 #
 #   q_1 (cross) q_0 = [0 1 2 3]
 #
-sim.circloaded_set_input(MySim.basis_fromint(2, 0x1))
+sim.circloaded_set_input(MySim.int_tofock(2, 0x1))
 
 # ********************************************************************
 # Run all file outputs, statistics and simulations.

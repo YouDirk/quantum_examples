@@ -109,8 +109,8 @@ class MySim (el.NoNoiseSim):
             return
 
         f_balanced = -1
-        for state, count in sim_results.values():
-            number = MySim.state_toint(state)
+        for energy, collapsed, count in sim_results.values():
+            number = MySim.state_toint(collapsed)
             x = abs(number) >> 1
 
             if f_balanced < 0: f_balanced = x
@@ -140,7 +140,7 @@ uf = Uf(F_DEF)
 
 print("\nChosen: f(x) via F_DEF\n")
 for i in range(2**N):
-    x = MySim.basis_fromint(N, i)
+    x = MySim.int_tofock(N, i)
     f = uf * qt.tensor(x, qt.basis(2, 0))
 
     print("  f(|%d>) = |%s>" % (i, MySim.state_tobit(f, 0)))
@@ -169,7 +169,7 @@ sim.circalloced_load(circ)
 #
 #   q_1 (cross) q_0 = [0 1 2 3]
 #
-sim.circloaded_set_input(MySim.basis_fromint(N+1, 0x1))
+sim.circloaded_set_input(MySim.int_tofock(N+1, 0x1))
 
 # ********************************************************************
 # Run all file outputs, statistics and simulations.

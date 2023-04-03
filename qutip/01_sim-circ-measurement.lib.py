@@ -29,7 +29,7 @@ N = 2
 # ********************************************************************
 # Input
 
-circ_input = el.SimState.basis_fromint(N, 0x3)
+circ_input = el.SimState.int_tofock(N, 0x3)
 
 # ********************************************************************
 # Output result
@@ -160,11 +160,11 @@ class MySim (el.NoNoiseSim):
         #   * energy  1 if first bit is |1>
 
         P0_x0 = self.meas_proj_projector(
-            [MySim.basis_fromint(self.N, 0),
-             MySim.basis_fromint(self.N, 2)])
+            [MySim.int_tofock(self.N, 0),
+             MySim.int_tofock(self.N, 2)])
         P0_x1 = self.meas_proj_projector(
-            [MySim.basis_fromint(self.N, 1),
-             MySim.basis_fromint(self.N, 3)])
+            [MySim.int_tofock(self.N, 1),
+             MySim.int_tofock(self.N, 3)])
         P0 = [P0_x0, P0_x1]
 
         energies0 = [-1., 1.]
@@ -181,11 +181,11 @@ class MySim (el.NoNoiseSim):
         #   * energy  1 if second bit is |1>
 
         P1_0x = self.meas_proj_projector(
-            [MySim.basis_fromint(self.N, 0),
-             MySim.basis_fromint(self.N, 1)])
+            [MySim.int_tofock(self.N, 0),
+             MySim.int_tofock(self.N, 1)])
         P1_1x = self.meas_proj_projector(
-            [MySim.basis_fromint(self.N, 2),
-             MySim.basis_fromint(self.N, 3)])
+            [MySim.int_tofock(self.N, 2),
+             MySim.int_tofock(self.N, 3)])
         P1 = [P1_0x, P1_1x]
 
         energies1 = [-1., 1.]
@@ -205,6 +205,9 @@ class MySim (el.NoNoiseSim):
         probs[0], coll[0], energ[0] = self.measure_probs(psi_out, O0)
         probs[1], coll[1], energ[1] = self.measure_probs(psi_out, O1)
         probs[2], coll[2], energ[2] = self.measure_probs(psi_out, O2)
+        meas_colls_final = coll[-1]
+        meas_probs_final = probs[-1]
+        meas_energ_final = energ[-1]
 
         print("")
         for j in range(len(probs)):
@@ -238,25 +241,33 @@ class MySim (el.NoNoiseSim):
         # ---
 
         DELTA_P_THRESHOLD = 0.05
-        meas_colls_final = coll[-1]
-        meas_probs_final = probs[-1]
+        DELTA_ENERGY_THRESHOLD = 1e-6
+
         is_prob_diff = False
-        for state, count in sim_results.values():
+        for energy, collapsed, count in sim_results.values():
             sim_freq = count/sim_runs
 
             meas_i = sum([
-              i if (state.dag() * meas_colls_final[i])[0][0][0] != .0
+              i if (collapsed.dag() * meas_colls_final[i])[0][0][0] != .0
               else 0
               for i in range(len(meas_colls_final))])
 
-            delta_p = abs(sim_freq - meas_probs_final[meas_i])
-            if delta_p < DELTA_P_THRESHOLD: continue
-
-            is_prob_diff = True
-            print(("****\n**** Result: Difference!  delta_p=%f,"
-                   + " p_sim=%f, p_meas=%f for collapsed=%s.")
-                  % (delta_p, sim_freq, meas_probs_final[meas_i],
+            delta_energy = abs(energy - meas_energ_final[meas_i])
+            if delta_energy > DELTA_ENERGY_THRESHOLD:
+                is_prob_diff = True
+                print(("****\n**** Result: Difference!  delta_energy"
+                  + "=%f, energy_sim=%f, energy_meas=%f for collapsed"
+                  + "=%s.")
+                  % (delta_energy, energy, meas_energ_final[meas_i],
                      list(meas_colls_final[meas_i].trans()[0][0])))
+
+            delta_p = abs(sim_freq - meas_probs_final[meas_i])
+            if delta_p > DELTA_P_THRESHOLD:
+                is_prob_diff = True
+                print(("****\n**** Result: Difference!  delta_p=%f,"
+                       + " p_sim=%f, p_meas=%f for collapsed=%s.")
+                      % (delta_p, sim_freq, meas_probs_final[meas_i],
+                         list(meas_colls_final[meas_i].trans()[0][0])))
 
         if not is_prob_diff:
             print("****\n**** Result: Success!  No difference between"
