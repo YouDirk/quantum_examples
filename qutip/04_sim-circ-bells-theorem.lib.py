@@ -28,23 +28,41 @@ import qutip.qip.operations as qo
 # Output result
 
 class MySim (el.DefaultSim):
+    # Rotation in Hilbert space (alpha) around Y axis in Bloch sphere
+    # coordinates (Theta) is:
+    #
+    #   * phi = 2*Theta = 4*alpha
+    #
+    # Therefore, measuring to sigmax (means to |+> basis) is if
+    #   phi = 2 * Theta      = 2 * (2 * alpha)
+    #       = 2 * (1/2 * pi) = 2 * (2 * 1/4 * pi)
+    #       = pi
+
+    # DELTA_PHI = 2/3 pi            <=> delta_alpha = 1/6 pi = 2/12 pi
+    DELTA_PHI   = 8/12 * np.pi
+
     def pre_measurement(self, sim_output: qt.Qobj,
                         measurement_ops: object) -> (qt.Qobj, object):
-        # Rotation Theta=phi/2 around Y in Bloch sphere coordinates.
-        #
-        # Measuring is to sigmax (means to |+> basis) if
-        #  phi = 2 * Theta
-        #      = 2 * (1/2 * 2*pi) = pi
 
-        # TODO
         match np.random.choice(range(3)):
             case 0:
-                # O(0, 1/8*pi)
-                phi = [0, 1/2*np.pi]
+                # O(0, 1/6*pi)      <=> P(a_|0> and b_|0>)
+                #   = cos(-3/12*pi)**2 * cos(-1/12*pi)**2
+                #   = (2+sqrt(2))/8
+                #   = 0.4267766952966
+                phi    = [0             , self.DELTA_PHI]
+                o_1bit = [qt.sigmaz()   , qt.sigmaz()]
             case 1:
-                phi = [0, 1/2*np.pi]
+                # O(0, 3/8*pi)      <=> P(a_|0> and c_|0>)
+                #   = cos(-2/8*pi)**2 * cos(1/8*pi)**2
+                #   = (2+sqrt(2))/8
+                #   = 0.4267766952966
+                phi    = [0             , 2*self.DELTA_PHI]
+                o_1bit = [qt.sigmaz()   , qt.sigmaz()]
             case 2:
-                phi = [0, 1/2*np.pi]
+                # O(1/8*pi, 3/8*pi) <=> P(b_|0> and c_|1>)
+                phi    = [self.DELTA_PHI, 2*self.DELTA_PHI]
+                o_1bit = [qt.sigmaz()   , -qt.sigmaz()]
             case _:
                 raise AssertionError("Just 3 combinations are possible!")
 
@@ -76,26 +94,27 @@ class MySim (el.DefaultSim):
         #   O = tensor{N}( [sigmax] )
         #     = sigmax (tensor) I_2^1 * I_2^1 (tensor) sigmax
 
-        meas_o = qt.tensor(qo.ry(phi[1]) * qt.sigmaz(),
-                           qo.ry(phi[0]) * qt.sigmaz())
+        meas_o = qt.tensor(o_1bit[1] * qo.ry(phi[1]),
+                           o_1bit[0] * qo.ry(phi[0]))
 
         return sim_output, meas_o
 
     def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         # TODO
-        max_00 = .0
+        n = 0x0
+        max_n = .0
         for state, count in sim_results.values():
             sim_freq = count/sim_runs
 
-            if state[0][0][0] == .0: continue
+            if state[n][0][0] == .0: continue
 
-            max_00 = sim_freq if sim_freq > max_00 else max_00
+            max_n = sim_freq if sim_freq > max_n else max_n
 
-        print(("\n**** TODO! max_00=%s"
+        print(("\n**** TODO! n=%d, max_n=%s"
                + "\n**** calculated: cos(1/8 * pi)**2 * cos(2/8 * pi)**2"
                + "\n****   = (2 + sqrt(2))/8"
                + "\n****   = 0.426776695296637\n")
-              % (max_00))
+              % (n, max_n))
 
 # ********************************************************************
 
