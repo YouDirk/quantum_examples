@@ -26,10 +26,71 @@ import qutip.qip.operations as qo
 
 # ********************************************************************
 
-# To simulate
+# To simulate (time ordering is left to right)
 #
-# TODO: Comment visual ASCII art of measurement angles in Hilbert
-#       space.
+# |0> ---|H|---*---- psi_out_0  \
+#              |                 } bell_state_00 = 1/sqrt(2)*(|00> + |11>)
+# |0> --------|+|--- psi_out_1  /
+#
+#
+# Angles alpha/phi relative to sigmax for measurement:
+#
+#   a|0> := alpha_a|0>               = -pi/4
+#   b|0> := alpha_b|0>               = -1/12*pi
+#   c|0> := alpha_c|0>               =  1/12*pi
+#   c|1> := alpha_c|1> = pi/2 + c|0> =  7/12*pi
+#
+#
+# Measurement (time ordering is left to right)
+#
+#             .-----------------.
+#             |                 |
+#             |  RNG {0, 1, 2}  |
+#             |                 |
+#             |  0: a|0>  b|0>  |
+#             |  1: a|0>  c|0>  |
+#             |  2: b|0>  c|1>  |
+#             |     /\   /\     |
+#             '-----**---**-----'
+#                   ||   ||
+#           alpha_0 /|   |\ alpha_1
+#            phi_0  \|   |/  phi_1
+#                   ||   ||
+#                   **|||||||||||||||||||||||||||||||||||||||||||||
+#                   ||   ||                                      ||
+#                   ||   **|||||||||||||||||||||||||||||||||||   ||
+#                   ||   ||                                 ||   ||
+#             .-----**---**------.         .----------.   .-**---**-.
+# |0> -|H|-*--|                  |  +1/-1  |          |   | ~~~~~~~ |
+#          |  |      MEAS_O      |||||||||||  Filter  ||||| Counter |
+# |0> ----|+|-| (rel. to sigmax) |         | energy=1 |   | ~~~~~~~ |
+#             '------------------'         '----------'   '---------'
+#
+#
+# Hilbert space !!! TODO !!!
+#
+#  psi_in_1
+# ^
+# |
+# *-|0>*****
+# |         ****
+# |             XX <-- c|0>
+# |            /  **
+# |           /     **
+# |          /       **
+# |         /         XX <-- sigmax
+# |        /        ~~**
+# |       /       ~~   **
+# |      /      ~~     **
+# |     /     ~~        **
+# |    /    ~~          XX <-- b|0>
+# |   /   ~~       +++++**
+# |  /  ~~    +++++      **  - a|0>
+# | / ~~ +++++           ** /
+# |/~~+++                **/
+# *-----------------------*->
+#                         | psi_in_0
+#                        |0>
 #
 # Result:
 #   Expectations are part of the simulation output.
@@ -119,10 +180,10 @@ class MySim (el.DefaultSim):
                 raise AssertionError("Just 3 combinations are possible!")
 
         # Measuring first bit (bit 0)
-        #o_kx = qt.tensor(qt.qeye(2), qo.ry(phi)*qt.sigmaz())
+        #o_kx = qt.tensor(qt.qeye(2), qt.sigmax()*qo.ry(phi[0]))
         #
         # Measuring second bit (bit 1)
-        #o_xk = qt.tensor(qo.ry(phi)*qt.sigmaz(), qt.qeye(2))
+        #o_xk = qt.tensor(qt.sigmax()*qo.ry(phi[1]), qt.qeye(2))
         #
         # Measuring both bits at the !THE SAME TIME!
         #o_both = o_kx * o_xk
@@ -131,15 +192,15 @@ class MySim (el.DefaultSim):
         #
         # The relation is, for N in interval [0, n-1]:
         #
-        #   O = tensor{N}( [R_y(phi)*sigmaz] )
+        #   O = tensor{N}( [sigmaz*R_y(phi)] )
         #     = product{N}( O_N )
-        #     = product{N}( I_2^{n - N - 1} (tensor) R_y(phi)*sigmaz
+        #     = product{N}( I_2^{n - N - 1} (tensor) sigmaz*R_y(phi)
         #                   (tensor) I_2^N )
-        #     =   I_2^{2 - 1 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^1
-        #       * I_2^{2 - 0 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^0
+        #     =   I_2^{2 - 1 - 1} (tensor) sigmaz*R_y(phi) (tensor) I_2^1
+        #       * I_2^{2 - 0 - 1} (tensor) sigmaz*R_y(phi) (tensor) I_2^0
         #
-        #     =   R_y(phi)*sigmaz (tensor) I_2^1
-        #       * I_2^1 (tensor) R_y(phi)*sigmaz
+        #     =   sigmaz*R_y(phi) (tensor) I_2^1
+        #       * I_2^1 (tensor) sigmaz*R_y(phi)
         #     =   O_KX * O_XK
         #
         # For phi=pi it results in
@@ -156,6 +217,8 @@ class MySim (el.DefaultSim):
     DELTA_ALPHA            = DELTA_PHI/4
     DELTA_ENERGY_THRESHOLD = 1e-6
     def analyse_sim_result(self, sim_results: dict, sim_runs: int):
+        # Means that we are measuring |00> or |11> with a probability
+        # of 1.0 if both measurement angles alpha/phi are 0.0*pi.
         energy_00 = 1
 
         cases_runs   = np.array([0, 0, 0])
@@ -175,10 +238,10 @@ class MySim (el.DefaultSim):
         print(
           ("\n**** For delta_alpha=%.4f*pi in Hilbert space"
            + " (delta_phi=%.4f*pi) measuring is"
-         + "\n**** a|0> := alpha_a|0>                = -pi/4"
-         + "\n**** b|0> := alpha_b|0>                = -%.4f*pi"
-         + "\n**** c|0> := alpha_c|0>                =  %.4f*pi"
-         + "\n**** c|1> := alpha_c|1> =  pi/2 + c|0> =  %.4f*pi"
+         + "\n**** a|0> := alpha_a|0>               = -pi/4"
+         + "\n**** b|0> := alpha_b|0>               = -%.4f*pi"
+         + "\n**** c|0> := alpha_c|0>               =  %.4f*pi"
+         + "\n**** c|1> := alpha_c|1> = pi/2 + c|0> =  %.4f*pi"
          + "\n****")
             % (self.DELTA_ALPHA, self.DELTA_PHI,
                self.DELTA_ALPHA, self.DELTA_ALPHA,
