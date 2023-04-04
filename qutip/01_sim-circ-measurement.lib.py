@@ -151,6 +151,8 @@ class MySim (el.NoNoiseSim):
 
     # ----------------------------------------------------------------
 
+    DELTA_P_THRESHOLD = 0.05
+    DELTA_ENERGY_THRESHOLD = 1e-6
     def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         psi_out = self.CIRC_AS_OP * self.input
 
@@ -240,9 +242,6 @@ class MySim (el.NoNoiseSim):
 
         # ---
 
-        DELTA_P_THRESHOLD = 0.05
-        DELTA_ENERGY_THRESHOLD = 1e-6
-
         is_prob_diff = False
         for count, energy, collapsed, custom_args in sim_results.values():
             sim_freq = count/sim_runs
@@ -253,7 +252,7 @@ class MySim (el.NoNoiseSim):
               for i in range(len(meas_colls_final))])
 
             delta_energy = abs(energy - meas_energ_final[meas_i])
-            if delta_energy > DELTA_ENERGY_THRESHOLD:
+            if delta_energy > self.DELTA_ENERGY_THRESHOLD:
                 is_prob_diff = True
                 print(("****\n**** Result: Difference!  delta_energy"
                   + "=%f, energy_sim=%f, energy_meas=%f for collapsed"
@@ -262,7 +261,7 @@ class MySim (el.NoNoiseSim):
                      list(meas_colls_final[meas_i].trans()[0][0])))
 
             delta_p = abs(sim_freq - meas_probs_final[meas_i])
-            if delta_p > DELTA_P_THRESHOLD:
+            if delta_p > self.DELTA_P_THRESHOLD:
                 is_prob_diff = True
                 print(("****\n**** Result: Difference!  delta_p=%f,"
                        + " p_sim=%f, p_meas=%f for collapsed=%s.")
