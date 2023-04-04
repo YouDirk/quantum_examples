@@ -47,7 +47,8 @@ class SimState:
     #            simulation.
     #
     # RETURN: Your custom ciruit input.
-    def pre_simulation(self, sim_input: qt.Qobj) -> qt.Qobj:
+    def pre_simulation(self, custom_args: dict, sim_input: qt.Qobj) \
+                       -> qt.Qobj:
         return sim_input
 
     # Not thread safe, do not access member variables!  Just use the
@@ -63,7 +64,7 @@ class SimState:
     #                  * list of Measurement Operators
     #
     # RETURN: Your custom ciruit (SIM_OUTPUT, MEASUREMENT_OPS).
-    def pre_measurement(self, sim_output: qt.Qobj,
+    def pre_measurement(self, custom_args: dict, sim_output: qt.Qobj,
                         measurement_ops: object) -> (qt.Qobj, object):
         return sim_output, measurement_ops
 
@@ -111,15 +112,7 @@ class SimState:
             raise AssertionError(
               "Number %d has more than %d bits!" % (num_abs, N))
 
-        # Need to loop, because __SETITEM__() is not defined in class
-        # QT.QOBJ.  Just an indexed read access is possible.
-        for i in range(N):
-            bit = num_abs & 0x1
-
-            result = qt.tensor(qt.basis(2, bit), result) \
-                     if i > 0 else qt.basis(2, bit)
-
-            num_abs >>= 1
+        result = qt.Qobj(qt.basis(2**N, num_abs), dims=[[2]*N, [1]*N])
 
         return result if number >= 0 else -result
 
@@ -186,21 +179,24 @@ class SimState:
 
     def _process_map_result(self, map_result: list):
         results = {}
-        for hash_key, energy, collapsed in map_result:
+        for hash_key, energy, collapsed, custom_args in map_result:
             if not hash_key in results.keys():
-                results[hash_key] = [energy, collapsed, 1]
-            else: results[hash_key][2] += 1
+                results[hash_key] = [1, energy, collapsed, custom_args]
+            else: results[hash_key][0] += 1
 
         self.plotter_state = StatePlotter(self.N)
         self.plotter_state.add(self.input, 'in')
 
         plot_state = qt.zero_ket(2**self.N, dims=[[2]*self.N, [1]*self.N])
         sim_runs = len(map_result)
-        for energy, collapsed, count in results.values():
+        for count, energy, collapsed, custom_args in results.values():
             freq = count/sim_runs
+            custom_args_str = (", custom_args=" + str(custom_args)) \
+                               if len(custom_args) > 0 else ""
+            print("Frequency %s for energy=%.2f%s %s" % (freq, energy,
+                  custom_args_str, self._state2str(collapsed)))
             plot_state += np.sqrt(freq) * collapsed
-            print("Frequency %s for %s" % (freq,
-                                           self._state2str(collapsed)))
+
         self.plotter_state.add(plot_state, 'out')
 
         self.analyse_sim_result(results, sim_runs)
@@ -338,15 +334,17 @@ class SimState:
     # ***
 
     def _inputset_run_ol_map(self, i: int, sim: cc.CircuitSimulator):
-        sim_input = self.pre_simulation(self.input)
+        custom_args = {}
+        sim_input = self.pre_simulation(custom_args, self.input)
+
         result = sim.run(sim_input)
 
-        sim_output, meas_ops = self.pre_measurement(
+        sim_output, meas_ops = self.pre_measurement(custom_args,
                      result.get_final_states(0), self.measurement_ops)
         energy, collapsed = qt.measurement.measure(sim_output, meas_ops)
-        hash_key       = str(collapsed)
+        hash_key       = str(collapsed) + str(custom_args)
 
-        return hash_key, energy, collapsed
+        return hash_key, energy, collapsed, custom_args
 
     # Run an 'operator-level' circuit simulation.
     def inputset_run_ol(self, N: int, **sim_args):
@@ -424,15 +422,17 @@ class SimState:
     # ***
 
     def _processorset_run_pl_map(self, i: int, processor: dv.Processor):
-        sim_input = self.pre_simulation(self.input)
+        custom_args = {}
+        sim_input = self.pre_simulation(custom_args, self.input)
+
         result = self.processor.run_state(sim_input)
 
-        sim_output, meas_ops = self.pre_measurement(
+        sim_output, meas_ops = self.pre_measurement(custom_args,
                                result.states[-1], self.measurement_ops)
         energy, collapsed = qt.measurement.measure(sim_output, meas_ops)
-        hash_key       = str(collapsed)
+        hash_key       = str(collapsed) + str(custom_args)
 
-        return hash_key, energy, collapsed
+        return hash_key, energy, collapsed, custom_args
 
     # Run a 'pulse-level' circuit simulation.
     def processorset_run_pl(self, N: int):

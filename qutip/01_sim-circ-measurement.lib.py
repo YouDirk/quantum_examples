@@ -244,7 +244,7 @@ class MySim (el.NoNoiseSim):
         DELTA_ENERGY_THRESHOLD = 1e-6
 
         is_prob_diff = False
-        for energy, collapsed, count in sim_results.values():
+        for count, energy, collapsed, custom_args in sim_results.values():
             sim_freq = count/sim_runs
 
             meas_i = sum([

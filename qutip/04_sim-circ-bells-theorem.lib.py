@@ -39,29 +39,31 @@ class MySim (el.DefaultSim):
     #       = pi
 
     # DELTA_PHI = 2/3 pi            <=> delta_alpha = 1/6 pi = 2/12 pi
-    DELTA_PHI   = 8/12 * np.pi
+    DELTA_PHI   = 8/12
 
-    def pre_measurement(self, sim_output: qt.Qobj,
+    def pre_measurement(self, custom_args: dict, sim_output: qt.Qobj,
                         measurement_ops: object) -> (qt.Qobj, object):
+        custom_args['measurement_case'] = np.random.choice(range(3))
 
-        match np.random.choice(range(3)):
+        match custom_args['measurement_case']:
             case 0:
                 # O(0, 1/6*pi)      <=> P(a_|0> and b_|0>)
                 #   = cos(-3/12*pi)**2 * cos(-1/12*pi)**2
                 #   = (2+sqrt(2))/8
                 #   = 0.4267766952966
-                phi    = [0             , self.DELTA_PHI]
+                phi    = [0             , self.DELTA_PHI * np.pi]
                 o_1bit = [qt.sigmaz()   , qt.sigmaz()]
             case 1:
                 # O(0, 3/8*pi)      <=> P(a_|0> and c_|0>)
                 #   = cos(-2/8*pi)**2 * cos(1/8*pi)**2
                 #   = (2+sqrt(2))/8
                 #   = 0.4267766952966
-                phi    = [0             , 2*self.DELTA_PHI]
+                phi    = [0             , 2*self.DELTA_PHI * np.pi]
                 o_1bit = [qt.sigmaz()   , qt.sigmaz()]
             case 2:
                 # O(1/8*pi, 3/8*pi) <=> P(b_|0> and c_|1>)
-                phi    = [self.DELTA_PHI, 2*self.DELTA_PHI]
+                phi    = [self.DELTA_PHI * np.pi,
+                                          2*self.DELTA_PHI * np.pi]
                 o_1bit = [qt.sigmaz()   , -qt.sigmaz()]
             case _:
                 raise AssertionError("Just 3 combinations are possible!")
@@ -99,28 +101,32 @@ class MySim (el.DefaultSim):
 
         return sim_output, meas_o
 
+    DELTA_ENERGY_THRESHOLD = 1e-6
     def analyse_sim_result(self, sim_results: dict, sim_runs: int):
-        # TODO
-        DELTA_ENERGY_THRESHOLD = 1e-6
+        energy_00 = 1
 
-        n = 0x0
-        energy_n = -1
-        max_n = .0
+        cases_runs   = np.array([0, 0, 0])
+        cases_counts = np.array([0, 0, 0])
+        for count, energy, collapsed, custom_args in sim_results.values():
+            cur_case = custom_args['measurement_case']
 
-        p_result = .0
-        for energy, collapsed, count in sim_results.values():
-            sim_freq = count/sim_runs
+            cases_runs[cur_case] += count
 
-            delta_energy = abs(energy - energy_n)
-            if delta_energy > DELTA_ENERGY_THRESHOLD: continue
+            delta_energy = abs(energy - energy_00)
+            if delta_energy > self.DELTA_ENERGY_THRESHOLD: continue
 
-            p_result += sim_freq
+            cases_counts[cur_case] += count
 
-        print(("\n**** TODO! n=%d, energy=%d, p_result=%s"
-               + "\n**** calculated: cos(1/8 * pi)**2 * cos(2/8 * pi)**2"
-               + "\n****   = (2 + sqrt(2))/8"
-               + "\n****   = 0.426776695296637\n")
-              % (n, energy_n, p_result))
+        p_result = cases_counts/cases_runs
+
+        lhs = p_result[0]
+        rhs = [p_result[1], p_result[2]]
+        print(("\n**** Bell's Inequality %.4f <= %.4f + %.4f"
+               + "\n****              <=>  %.4f <= %.4f"
+               + "\n****                   = %s\n")
+              % (lhs  , rhs[0], rhs[1],
+                 lhs  , sum(rhs),
+                 lhs <= sum(rhs)))
 
 # ********************************************************************
 

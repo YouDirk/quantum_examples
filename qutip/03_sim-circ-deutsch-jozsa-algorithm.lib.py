@@ -109,7 +109,7 @@ class MySim (el.NoNoiseSim):
             return
 
         f_balanced = -1
-        for energy, collapsed, count in sim_results.values():
+        for count, energy, collapsed, custom_args in sim_results.values():
             number = MySim.state_toint(collapsed)
             x = abs(number) >> 1
 

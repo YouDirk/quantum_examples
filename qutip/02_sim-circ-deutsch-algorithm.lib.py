@@ -96,7 +96,7 @@ class MySim (el.DefaultSim):
 
         f_balanced = -1
 
-        for energy, collapsed, count in sim_results.values():
+        for count, energy, collapsed, custom_args in sim_results.values():
             cur = MySim.state_tobit(collapsed, 1)
 
             if f_balanced < 0: f_balanced = cur
