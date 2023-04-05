@@ -145,10 +145,10 @@ import qutip.qip.operations as qo
 #
 # In that case of quantum logic, Bell's inequality will not be
 # satisfied, and the sum of it's right-hand side P(a_|0>, c_|0>) +
-# P(b_|0>, c_|1>) is greater than the left-hand side P(a_|0>, b_|0>)
+# P(b_|0>, c_|1>) is lower than the left-hand side P(a_|0>, b_|0>)
 # for every delta_alpha in the picture above.
 #
-# Therefore the quantum logic contradicts the Bell's inequality.
+# Therefore the quantum logic contradicts Bell's inequality.
 #
 #
 # Result of simulation
