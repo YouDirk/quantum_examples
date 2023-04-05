@@ -27,21 +27,26 @@ import qutip.qip.operations as qo
 # ********************************************************************
 
 # To simulate (time ordering is left to right)
+# ============================================
 #
 # |0> ---|H|---*---- psi_out_0  \
 #              |                 } bell_state_00 = 1/sqrt(2)*(|00> + |11>)
 # |0> --------|+|--- psi_out_1  /
 #
 #
-# Angles alpha/phi relative to sigmax for measurement:
+# Angles alpha/phi relative to sigmax for measurement
+# ===================================================
 #
 #   a|0> := alpha_a|0>               = -pi/4
 #   b|0> := alpha_b|0>               = -1/12*pi
 #   c|0> := alpha_c|0>               =  1/12*pi
 #   c|1> := alpha_c|1> = pi/2 + c|0> =  7/12*pi
 #
+#   => alpha_i is element of {a|0>, b|0>, c|0>, c|1>}
+#
 #
 # Measurement (time ordering is left to right)
+# ============================================
 #
 #             .-----------------.
 #             |                 |
@@ -56,43 +61,98 @@ import qutip.qip.operations as qo
 #           alpha_0 /|   |\ alpha_1
 #            phi_0  \|   |/  phi_1
 #                   ||   ||
-#                   **|||||||||||||||||||||||||||||||||||||||||||||
-#                   ||   ||                                      ||
-#                   ||   **|||||||||||||||||||||||||||||||||||   ||
-#                   ||   ||                                 ||   ||
-#             .-----**---**------.         .----------.   .-**---**-.
-# |0> -|H|-*--|                  |  +1/-1  |          |   | ~~~~~~~ |
-#          |  |      MEAS_O      |||||||||||  Filter  ||||| Counter |
-# |0> ----|+|-| (rel. to sigmax) |         | energy=1 |   | ~~~~~~~ |
-#             '------------------'         '----------'   '---------'
+#                   **||||||||||||||||||||||||||||||||||||||||||||||
+#                   ||   ||                                       ||
+#                   ||   **||||||||||||||||||||||||||||||||||||   ||
+#                   ||   ||                                  ||   ||
+#             .-----**---**------.         .-----------.   .-**---**-.
+# |0> -|H|-*--|                  |  +1/-1  |           |   | ~~~~~~~ |
+#          |  |      MEAS_O      |||||||||||  Filter   ||||| Counter |
+# |0> ----|+|-| (rel. to sigmax) |         | energy=+1 |   | ~~~~~~~ |
+#             '------------------'         '-----------'   '---------'
 #
 #
-# Hilbert space !!! TODO !!!
+# Hilbert space
+# =============
 #
-#  psi_in_1
-# ^
-# |
-# *-|0>*****
-# |         ****
-# |             XX <-- c|0>
-# |            /  **
-# |           /     **
-# |          /       **
-# |         /         XX <-- sigmax
-# |        /        ~~**
-# |       /       ~~   **
-# |      /      ~~     **
-# |     /     ~~        **
-# |    /    ~~          XX <-- b|0>
-# |   /   ~~       +++++**
-# |  /  ~~    +++++      **  - a|0>
-# | / ~~ +++++           ** /
-# |/~~+++                **/
-# *-----------------------*->
-#                         | psi_in_0
-#                        |0>
+# psi_out_1 (i.e. Alice)              psi_out_0 (i.e. Bob)
+# ''''''''''''''''''''''              ''''''''''''''''''''
+# ^ |1>                               ^ |1>
+# |/                                  |
+# *****.         c|0>                 *****.         c|0>
+# |   '******.   /    +delta_alpha    |   '******.   /    +delta_alpha
+# |         '***M**. /                |         '***M**. /
+# |            /  '*/.                |            /  '*/.
+# |           /    /'**               |           /    /'**
+# |          /    /   **              |          /    /   **
+# |         /         ~MM <-- sigma_x |         /         ~MM <-- sigma_x
+# |        /        ~~  **            |        /        ~~  **
+# |       /       ~~  -- -delta_alpha |       /       ~~  -- -delta_alpha
+# |      /      ~~   /   **           |      /      ~~   /   **
+# |     /     ~~         **           |     /     ~~         **
+# |    /    ~~          ++MM <-- b|0> |    /    ~~          ++MM <-- b|0>
+# |   /   ~~       +++++  **          |   /   ~~       +++++  **
+# |  /  ~~    +++++       ** a|0>     |  /  ~~    +++++       ** a|0>
+# | / ~~ +++++            ** /        | / ~~ +++++            ** /
+# |/~~\++                 **/         |/~~\++                 **/
+# '----\------------------**->        '----\------------------**->
+#       \                  |                \                  |
+#       alpha_1            |0>              alpha_0            |0>
 #
-# Result:
+# In classical predicate logic we would assume that if we measure
+# psi_out_1 (commonly called 'Alice') statistically, i.e. P(psi_out_1
+# | alpha_1), in a first experiment followed by a second experiment in
+# which we are measuring statistically psi_out_0 (commonly called
+# 'Bob'), i.e. P(psi_out_0 | alpha_0), then if Alice and Bobs quantum
+# bits act in the same manner by entangle them with the Bell State
+# b_00
+#
+#   Bell State
+#   ----------
+#
+#     b_00 = 1/sqrt(2)(|00> + |11>)
+#
+# we would expect that if Alice and Bob measure them together in one
+# single experiment
+#
+#   Probabilistic Markov logic
+#   --------------------------
+#
+#     P(psi_out_1 | alpha_1      AND  psi_out_0 | alpha_0)
+#       = P(psi_out_1 | alpha_1)  *   P(psi_out_0 | alpha_0)
+#       = cos^2(alpha_1)          *   cos^2(alpha_0)
+#
+# We would expect that the logical conjunction AND will be
+# mathematically realized by multiply the probabilities, which we get
+# by implement the experiments successive in sequence.  In that case
+#
+#   Bell's inequality
+#   -----------------
+#
+#     P(a_|0>, b_|0>) <= P(a_|0>, c_|0>) + P(b_|0>, c_|1>)
+#
+# will be satisfied.  But in quantum logic (and in practice) this is
+# not true.
+#
+# In quantum logic instead, it seems that an logical AND predicate is
+# a subtraction of the angles in Hilbert space.  It seems that
+#
+#   Quantum logic
+#   -------------
+#
+#     P(psi_out_1 | alpha_1      AND  psi_out_0 | alpha_0)
+#       = cos^2(alpha_1           -   alpha_0)
+#
+# In that case of quantum logic, Bell's inequality will not be
+# satisfied, and the sum of it's right-hand side P(a_|0>, c_|0>) +
+# P(b_|0>, c_|1>) is greater than the left-hand side P(a_|0>, b_|0>)
+# for every delta_alpha in the picture above.
+#
+# Therefore the quantum logic contradicts the Bell's inequality.
+#
+#
+# Result of simulation
+# ====================
 #   Expectations are part of the simulation output.
 
 # ********************************************************************
@@ -120,8 +180,8 @@ class MySim (el.DefaultSim):
             case 0:
                 # O_sigmax(a_|0>, b_|0>) = O_sigmax(-1/4*pi, -1/12*pi)
                 #
-                # Probability in first-order logic (satisfy Bell's
-                # inequality):
+                # Probability in predicate/first-order logic (satisfy
+                # Bell's inequality):
                 #   P(a_|0> AND b_|0>)
                 #     = cos( -1/4*pi )**2 * cos( -1/12*pi )**2
                 #     = (2+sqrt(3))/8
@@ -139,8 +199,8 @@ class MySim (el.DefaultSim):
             case 1:
                 # O_sigmax(a_|0>, c_|0>) = O_sigmax(-1/4*pi, 1/12*pi)
                 #
-                # Probability in first-order logic (satisfy Bell's
-                # inequality):
+                # Probability in predicate/first-order logic (satisfy
+                # Bell's inequality):
                 #   P(a_|0> AND c_|0>)
                 #     = cos( -1/4*pi )**2 * cos( 1/12*pi )**2
                 #     = (2+sqrt(3))/8
@@ -158,8 +218,8 @@ class MySim (el.DefaultSim):
             case 2:
                 # O_sigmax(b_|0>, c_|1>) = O_sigmax(-1/4*pi, 1/4*pi)
                 #
-                # Probability in first-order logic (satisfy Bell's
-                # inequality):
+                # Probability in predicate/first-order logic (satisfy
+                # Bell's inequality):
                 #   P(b_|0> AND c_|1>)
                 #     = cos( -1/12*pi )**2 * sin(    1/12*pi     )**2
                 #     = cos( -1/12*pi )**2 * cos( pi/2 - 1/12*pi )**2
@@ -254,7 +314,8 @@ class MySim (el.DefaultSim):
           np.cos( -self.DELTA_ALPHA*np.pi )**2
             * np.cos( np.pi/2 - self.DELTA_ALPHA*np.pi )**2 ]
         print(
-          ("**** Expected: Bell's inequality in   First-Order Logic:"
+          ("**** Expected: Bell's inequality in   Predicate/First-Order"
+           + " Logic:"
          + "\n****   P(a|0> AND b|0>)               <= P(a|0> AND c|0>)"
            + "              + P(b|0> AND c|1>)"
          + "\n****   cos^2(a|0>) *cos^2(b|0>)       <= cos^2(a|0>)"
