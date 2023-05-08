@@ -40,7 +40,7 @@ import qutip.qip.operations as qo
 #   a|0> := alpha_a|0>               = -pi/4
 #   b|0> := alpha_b|0>               = -1/12*pi
 #   c|0> := alpha_c|0>               =  1/12*pi
-#   c|1> := alpha_c|1> = pi/2 + c|0> =  7/12*pi
+#   c|1> := alpha_c|1> = c|0> - pi/2 = -5/12*pi
 #
 #   => alpha_i is element of {a|0>, b|0>, c|0>, c|1>}
 #
@@ -159,6 +159,11 @@ import qutip.qip.operations as qo
 # Output result
 
 class MySim (el.DefaultSim):
+
+    # alpha = Theta/2 = phi/4
+    # alpha: Hilbert space, Theta: Bloch sphere, phi: rotation operator
+    DELTA_ALPHA            = 1/12
+
     # Rotation in Hilbert space (alpha) around Y axis in Bloch sphere
     # coordinates (Theta) is for rotation operator (phi):
     #
@@ -170,7 +175,7 @@ class MySim (el.DefaultSim):
     #       = pi
 
     # DELTA_PHI = 1/3 pi            <=> delta_alpha = 1/12 pi
-    DELTA_PHI   = 4/12
+    DELTA_PHI   = 4*DELTA_ALPHA
 
     def pre_measurement(self, custom_args: dict, sim_output: qt.Qobj,
                         measurement_ops: object) -> (qt.Qobj, object):
@@ -222,14 +227,14 @@ class MySim (el.DefaultSim):
                 # Bell's inequality):
                 #   P(b_|0> AND c_|1>)
                 #     = cos( -1/12*pi )**2 * sin(    1/12*pi     )**2
-                #     = cos( -1/12*pi )**2 * cos( pi/2 - 1/12*pi )**2
+                #     = cos( -1/12*pi )**2 * cos( 1/12*pi - pi/2 )**2
                 #     = cos( -1/12*pi )**2 * cos(    5/12*pi     )**2
                 #     = 1/16
                 #     = 0.0625
                 # Probability in quantum logic (contradicts Bell's
                 # inequality):
                 #   P(b_|0>, c_|1>)
-                #     = cos( (-1/12*pi) - (pi/2 + 1/12*pi) )**2
+                #     = cos( (-1/12*pi) - (1/12*pi - pi/2) )**2
                 #     = 1/4 = 0.25
                 #
                 # Consider: phi = 2*Theta = 4*alpha
@@ -272,9 +277,6 @@ class MySim (el.DefaultSim):
 
         return sim_output, meas_o
 
-    # alpha = Theta/2 = phi/4
-    # alpha: Hilbert space, Theta: Bloch sphere, phi: rotation operator
-    DELTA_ALPHA            = DELTA_PHI/4
     DELTA_ENERGY_THRESHOLD = 1e-6
     def analyse_sim_result(self, sim_results: dict, sim_runs: int):
         # Means that we are measuring |00> or |11> with a probability
@@ -299,20 +301,20 @@ class MySim (el.DefaultSim):
           ("\n**** For delta_alpha=%.4f*pi in Hilbert space"
            + " (delta_phi=%.4f*pi) measuring is"
          + "\n**** a|0> := alpha_a|0>               = -pi/4"
-         + "\n**** b|0> := alpha_b|0>               = -%.4f*pi"
-         + "\n**** c|0> := alpha_c|0>               =  %.4f*pi"
-         + "\n**** c|1> := alpha_c|1> = pi/2 + c|0> =  %.4f*pi"
+         + "\n**** b|0> := alpha_b|0>               = % 2.4f*pi"
+         + "\n**** c|0> := alpha_c|0>               = % 2.4f*pi"
+         + "\n**** c|1> := alpha_c|1> = c|0> - pi/2 = % 2.4f*pi"
          + "\n****")
             % (self.DELTA_ALPHA, self.DELTA_PHI,
-               self.DELTA_ALPHA, self.DELTA_ALPHA,
-               (1/2 + self.DELTA_ALPHA)))
+               -self.DELTA_ALPHA, self.DELTA_ALPHA,
+               (self.DELTA_ALPHA - 1/2)))
 
         lhs_fol = \
           np.cos( -1/4*np.pi )**2 * np.cos( -self.DELTA_ALPHA*np.pi )**2
         rhs_fol = [
           np.cos( -1/4*np.pi )**2 * np.cos(  self.DELTA_ALPHA*np.pi )**2,
           np.cos( -self.DELTA_ALPHA*np.pi )**2
-            * np.cos( np.pi/2 - self.DELTA_ALPHA*np.pi )**2 ]
+            * np.cos( self.DELTA_ALPHA*np.pi - np.pi/2 )**2 ]
         print(
           ("**** Expected: Bell's inequality in   Predicate/First-Order"
            + " Logic:"
@@ -321,7 +323,7 @@ class MySim (el.DefaultSim):
          + "\n****   cos^2(a|0>) *cos^2(b|0>)       <= cos^2(a|0>)"
            + " *cos^2(c|0>)      + cos^2(b|0>)      *cos^2(c|1>)"
          + "\n****   cos^2(-pi/4)*cos^2(-%.4f*pi) <= cos^2(-pi/4)*"
-           + "cos^2(%.4f*pi) + cos^2(-%.4f*pi)*cos^2(pi/2 + %.4f*pi)"
+           + "cos^2(%.4f*pi) + cos^2(-%.4f*pi)*cos^2(%.4f*pi - pi/2)"
          + "\n****        %.4f <= %.4f + %.4f"
          + "\n****   <=>  %.4f <= %.4f"
          + "\n****        = %s"
@@ -338,7 +340,7 @@ class MySim (el.DefaultSim):
         rhs_qul = [
           np.cos(   (-1/4*np.pi) - (self.DELTA_ALPHA*np.pi) )**2,
           np.cos(   (-self.DELTA_ALPHA*np.pi)
-                  - (np.pi/2 + self.DELTA_ALPHA*np.pi)      )**2]
+                  - (self.DELTA_ALPHA*np.pi - np.pi/2)      )**2]
         print(
           ("**** Expected: Bell's inequality in   Quantum Logic:"
          + "\n****   P(a_|0>, b_|0>)             <= P(a_|0>, c_|0>)"
@@ -346,7 +348,7 @@ class MySim (el.DefaultSim):
          + "\n****   cos^2(a|0>  - b|0>)         <= cos^2(a|0>  - c|0>"
            + ")      + cos^2(b|0>       - c|1>)"
          + "\n****   cos^2(-pi/4 - (-%.4f*pi)) <= cos^2(-pi/4 - %.4f*pi)"
-           + " + cos^2(-%.4f*pi - (pi/2 + %.4f*pi))"
+           + " + cos^2(-%.4f*pi - (%.4f*pi - pi/2))"
          + "\n****   <=>  %.4f <= %.4f + %.4f"
          + "\n****   <=>  %.4f <= %.4f"
          + "\n****        = %s"
