@@ -245,10 +245,10 @@ class MySim (el.DefaultSim):
                 raise AssertionError("Just 3 combinations are possible!")
 
         # Measuring first bit (bit 0)
-        #o_kx = qt.tensor(qt.qeye(2), qt.sigmax()*qo.ry(phi[0]))
+        #o_kx = qt.tensor(qt.qeye(2), qo.ry(phi[0])*qt.sigmax())
         #
         # Measuring second bit (bit 1)
-        #o_xk = qt.tensor(qt.sigmax()*qo.ry(phi[1]), qt.qeye(2))
+        #o_xk = qt.tensor(qo.ry(phi[1])*qt.sigmax(), qt.qeye(2))
         #
         # Measuring both bits at the !THE SAME TIME!
         #o_both = o_kx * o_xk
@@ -257,23 +257,23 @@ class MySim (el.DefaultSim):
         #
         # The relation is, for N in interval [0, n-1]:
         #
-        #   O = tensor{N}( [sigmaz*R_y(phi)] )
+        #   O = tensor{N}( [R_y(phi)*sigmaz] )
         #     = product{N}( O_N )
-        #     = product{N}( I_2^{n - N - 1} (tensor) sigmaz*R_y(phi)
+        #     = product{N}( I_2^{n - N - 1} (tensor) R_y(phi)*sigmaz
         #                   (tensor) I_2^N )
-        #     =   I_2^{2 - 1 - 1} (tensor) sigmaz*R_y(phi) (tensor) I_2^1
-        #       * I_2^{2 - 0 - 1} (tensor) sigmaz*R_y(phi) (tensor) I_2^0
+        #     =   I_2^{2 - 1 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^1
+        #       * I_2^{2 - 0 - 1} (tensor) R_y(phi)*sigmaz (tensor) I_2^0
         #
-        #     =   sigmaz*R_y(phi) (tensor) I_2^1
-        #       * I_2^1 (tensor) sigmaz*R_y(phi)
+        #     =   R_y(phi)*sigmaz (tensor) I_2^1
+        #       * I_2^1 (tensor) R_y(phi)*sigmaz
         #     =   O_KX * O_XK
         #
         # For phi=pi it results in
         #   O = tensor{N}( [sigmax] )
         #     = sigmax (tensor) I_2^1 * I_2^1 (tensor) sigmax
 
-        meas_o = qt.tensor(qt.sigmax() * qo.ry(phi[1]),
-                           qt.sigmax() * qo.ry(phi[0]))
+        meas_o = qt.tensor(qo.ry(phi[1]) * qt.sigmax(),
+                           qo.ry(phi[0]) * qt.sigmax())
 
         return sim_output, meas_o
 
