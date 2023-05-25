@@ -295,7 +295,7 @@ class MySim (el.DefaultSim):
 
             cases_counts[cur_case] += count
 
-        p_result = cases_counts/cases_runs
+        # ---
 
         print(
           ("\n**** For delta_alpha=%.4f*pi in Hilbert space"
@@ -360,15 +360,22 @@ class MySim (el.DefaultSim):
                lhs_qul, sum(rhs_qul), lhs_qul <= sum(rhs_qul),
                "Success!" if not lhs_qul <= sum(rhs_qul) else "FAILURE!"))
 
+        # ---
+
+        p_result = cases_counts/cases_runs
+
         lhs = p_result[0]
         rhs = [p_result[1], p_result[2]]
         print(
           ("**** Result: Bell's inequality in   Quantum Logic:"
-         + "\n****        %.4f <= %.4f + %.4f"
-         + "\n****   <=>  %.4f <= %.4f"
+         + "\n****        %4d/%4d <= %4d/%4d + %4d/%4d"
+         + "\n****   <=>     %.4f <=    %.4f + %.4f"
+         + "\n****   <=>     %.4f <= %.4f"
          + "\n****        = %s"
          + "\n****    =>  %s\n")
-            % (lhs, rhs[0], rhs[1],
+            % (cases_counts[0], cases_runs[0], cases_counts[1],
+               cases_runs[1], cases_counts[2], cases_runs[2],
+               lhs, rhs[0], rhs[1],
                lhs  , sum(rhs), lhs <= sum(rhs),
                "Success!" if not lhs <= sum(rhs) else "FAILURE!"))
 
