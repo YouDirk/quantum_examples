@@ -162,7 +162,12 @@ class MySim (el.DefaultSim):
 
     # alpha = Theta/2 = phi/4
     # alpha: Hilbert space, Theta: Bloch sphere, phi: rotation operator
-    DELTA_ALPHA            = 1/12
+    DELTA_ALPHA               = 1/12
+
+    ALPHA_A0                  = -1/4
+    ALPHA_B0                  = -DELTA_ALPHA
+    ALPHA_C0                  = +DELTA_ALPHA
+    ALPHA_C1                  = +DELTA_ALPHA - 1/2
 
     # Rotation in Hilbert space (alpha) around Y axis in Bloch sphere
     # coordinates (Theta) is for rotation operator (phi):
@@ -175,7 +180,11 @@ class MySim (el.DefaultSim):
     #       = pi
 
     # DELTA_PHI = 1/3 pi            <=> delta_alpha = 1/12 pi
-    DELTA_PHI   = 4*DELTA_ALPHA
+    DELTA_PHI                 = 4*DELTA_ALPHA
+    PHI_A0                    = 4*ALPHA_A0
+    PHI_B0                    = 4*ALPHA_B0
+    PHI_C0                    = 4*ALPHA_C0
+    PHI_C1                    = 4*ALPHA_C1
 
     def pre_measurement(self, custom_args: dict, sim_output: qt.Qobj,
                         measurement_ops: object) -> (qt.Qobj, object):
@@ -199,8 +208,7 @@ class MySim (el.DefaultSim):
                 #
                 # !!! Consider: P(a_|0> AND b_|0>) == P(a_|0> AND c_|0>)
                 #          but: P(a_|0>,    b_|0>) != P(a_|0>   , c_|0>)
-                phi    = [-np.pi,
-                                   -self.DELTA_PHI * np.pi]
+                phi    = [self.PHI_A0*np.pi, self.PHI_B0*np.pi]
             case 1:
                 # O_sigmax(a_|0>, c_|0>) = O_sigmax(-1/4*pi, 1/12*pi)
                 #
@@ -218,8 +226,7 @@ class MySim (el.DefaultSim):
                 #
                 # !!! Consider: P(a_|0> AND b_|0>) == P(a_|0> AND c_|0>)
                 #          but: P(a_|0>,    b_|0>) != P(a_|0>   , c_|0>)
-                phi    = [-np.pi,
-                                   self.DELTA_PHI * np.pi]
+                phi    = [self.PHI_A0*np.pi, self.PHI_C0*np.pi]
             case 2:
                 # O_sigmax(b_|0>, c_|1>) = O_sigmax(-1/4*pi, 1/4*pi)
                 #
@@ -239,8 +246,7 @@ class MySim (el.DefaultSim):
                 #
                 # Consider: phi = 2*Theta = 4*alpha
                 #               = 4*(pi/2) + DELTA_PHI
-                phi    = [-self.DELTA_PHI * np.pi,
-                                   4*(np.pi/2) + self.DELTA_PHI * np.pi]
+                phi    = [self.PHI_B0*np.pi, self.PHI_C1*np.pi]
             case _:
                 raise AssertionError("Just 3 combinations are possible!")
 
@@ -300,62 +306,62 @@ class MySim (el.DefaultSim):
         print(
           ("\n**** For delta_alpha=%.4f*pi in Hilbert space"
            + " (delta_phi=%.4f*pi) measuring is"
-         + "\n**** a|0> := alpha_a|0>               = -pi/4"
+         + "\n**** a|0> := alpha_a|0>               = % 2.4f*pi"
          + "\n**** b|0> := alpha_b|0>               = % 2.4f*pi"
          + "\n**** c|0> := alpha_c|0>               = % 2.4f*pi"
          + "\n**** c|1> := alpha_c|1> = c|0> - pi/2 = % 2.4f*pi"
          + "\n****")
             % (self.DELTA_ALPHA, self.DELTA_PHI,
-               -self.DELTA_ALPHA, self.DELTA_ALPHA,
-               (self.DELTA_ALPHA - 1/2)))
+               self.ALPHA_A0, self.ALPHA_B0, self.ALPHA_C0,
+               self.ALPHA_C1))
 
-        lhs_fol = \
-          np.cos( -1/4*np.pi )**2 * np.cos( -self.DELTA_ALPHA*np.pi )**2
+        lhs_fol = np.cos( self.ALPHA_A0*np.pi )**2 \
+                * np.cos( self.ALPHA_B0*np.pi )**2
         rhs_fol = [
-          np.cos( -1/4*np.pi )**2 * np.cos(  self.DELTA_ALPHA*np.pi )**2,
-          np.cos( -self.DELTA_ALPHA*np.pi )**2
-            * np.cos( self.DELTA_ALPHA*np.pi - np.pi/2 )**2 ]
+            np.cos( self.ALPHA_A0*np.pi )**2
+          * np.cos( self.ALPHA_C0*np.pi )**2,
+            np.cos( self.ALPHA_B0*np.pi )**2
+          * np.cos( self.ALPHA_C1*np.pi )**2 ]
         print(
           ("**** Expected: Bell's inequality in   Predicate/First-Order"
            + " Logic:"
-         + "\n****   P(a|0> AND b|0>)               <= P(a|0> AND c|0>)"
-           + "              + P(b|0> AND c|1>)"
-         + "\n****   cos^2(a|0>) *cos^2(b|0>)       <= cos^2(a|0>)"
-           + " *cos^2(c|0>)      + cos^2(b|0>)      *cos^2(c|1>)"
-         + "\n****   cos^2(-pi/4)*cos^2(-%.4f*pi) <= cos^2(-pi/4)*"
-           + "cos^2(%.4f*pi) + cos^2(-%.4f*pi)*cos^2(%.4f*pi - pi/2)"
-         + "\n****        %.4f <= %.4f + %.4f"
-         + "\n****   <=>  %.4f <= %.4f"
-         + "\n****        = %s"
-         + "\n****    =>  %s"
-         + "\n****")
-            % (self.DELTA_ALPHA, self.DELTA_ALPHA, self.DELTA_ALPHA,
-               self.DELTA_ALPHA,
-               lhs_fol, rhs_fol[0], rhs_fol[1],
-               lhs_fol, sum(rhs_fol), lhs_fol <= sum(rhs_fol),
-               "Success!" if lhs_fol <= sum(rhs_fol) else "FAILURE!"))
-
-        lhs_qul =  np.cos(
-            (-1/4*np.pi) - (-self.DELTA_ALPHA*np.pi) )**2
-        rhs_qul = [
-          np.cos(   (-1/4*np.pi) - (self.DELTA_ALPHA*np.pi) )**2,
-          np.cos(   (-self.DELTA_ALPHA*np.pi)
-                  - (self.DELTA_ALPHA*np.pi - np.pi/2)      )**2]
-        print(
-          ("**** Expected: Bell's inequality in   Quantum Logic:"
-         + "\n****   P(a_|0>, b_|0>)             <= P(a_|0>, c_|0>)"
-           + "          + P(b_|0>, c_|1>)"
-         + "\n****   cos^2(a|0>  - b|0>)         <= cos^2(a|0>  - c|0>"
-           + ")      + cos^2(b|0>       - c|1>)"
-         + "\n****   cos^2(-pi/4 - (-%.4f*pi)) <= cos^2(-pi/4 - %.4f*pi)"
-           + " + cos^2(-%.4f*pi - (%.4f*pi - pi/2))"
+         + "\n****   P(a|0>       AND b|0>)            <= P(a|0>       "
+           + "AND c|0>)            + P(b|0>         AND c|1>)"
+         + "\n****   cos^2(a|0>)    *cos^2(b|0>)       <= cos^2(a|0>)    "
+           + "*cos^2(c|0>)       + cos^2(b|0>)      *cos^2(c|1>)"
+         + "\n****   cos^2(% 2.2f*pi)*cos^2(% 2.4f*pi) <= cos^2(% 2.2f*pi)"
+           + "*cos^2(% 2.4f*pi) + cos^2(% 2.4f*pi)*cos^2(% 2.4f*pi)"
          + "\n****   <=>  %.4f <= %.4f + %.4f"
          + "\n****   <=>  %.4f <= %.4f"
          + "\n****        = %s"
          + "\n****    =>  %s"
          + "\n****")
-            % (self.DELTA_ALPHA, self.DELTA_ALPHA, self.DELTA_ALPHA,
-               self.DELTA_ALPHA,
+            % (self.ALPHA_A0, self.ALPHA_B0, self.ALPHA_A0,
+               self.ALPHA_C0, self.ALPHA_B0, self.ALPHA_C1,
+               lhs_fol, rhs_fol[0], rhs_fol[1],
+               lhs_fol, sum(rhs_fol), lhs_fol <= sum(rhs_fol),
+               "Success!" if lhs_fol <= sum(rhs_fol) else "FAILURE!"))
+
+        lhs_qul =  np.cos(
+            (self.ALPHA_A0 - self.ALPHA_B0)*np.pi )**2
+        rhs_qul = [
+          np.cos( (self.ALPHA_A0 - self.ALPHA_C0)*np.pi )**2,
+          np.cos( (self.ALPHA_B0 - self.ALPHA_C1)*np.pi )**2]
+        print(
+          ("**** Expected: Bell's inequality in   Quantum Logic:"
+         + "\n****   P(a|0>     AND b|0>)        <= P(a|0>     AND "
+           + "c|0>)        + P(b|0>       AND c|1>)"
+         + "\n****   cos^2(a|0>   - b|0>)        <= cos^2(a|0>   - "
+           + "c|0>)        + cos^2(b|0>     - c|1>)"
+         + "\n****   cos^2((% 2.2f - % 2.4f)*pi) <= cos^2((% 2.2f - "
+           + "% 2.4f)*pi) + cos^2((% 2.4f - % 2.4f)*pi)"
+         + "\n****   <=>  %.4f <= %.4f + %.4f"
+         + "\n****   <=>  %.4f <= %.4f"
+         + "\n****        = %s"
+         + "\n****    =>  %s"
+         + "\n****")
+            % (self.ALPHA_A0, self.ALPHA_B0, self.ALPHA_A0,
+               self.ALPHA_C0, self.ALPHA_B0, self.ALPHA_C1,
                lhs_qul, rhs_qul[0], rhs_qul[1],
                lhs_qul, sum(rhs_qul), lhs_qul <= sum(rhs_qul),
                "Success!" if not lhs_qul <= sum(rhs_qul) else "FAILURE!"))
