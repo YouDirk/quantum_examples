@@ -278,8 +278,15 @@ class MySim (el.DefaultSim):
         #   O = tensor{N}( [sigmax] )
         #     = sigmax (tensor) I_2^1 * I_2^1 (tensor) sigmax
 
-        meas_o = qt.tensor(qo.ry(phi[1]) * qt.sigmax(),
-                           qo.ry(phi[0]) * qt.sigmax())
+        # Mathematically the same.
+        #   if True:  angles are relative  to |+> basis  for sigma_x.
+        #   if False: angles are absolute, to |0> basis, for sigma_z.
+        if True:
+            meas_o = qt.tensor(qo.ry(phi[1]) * qt.sigmax(),
+                               qo.ry(phi[0]) * qt.sigmax())
+        else:
+            meas_o = qt.tensor(qo.ry(np.pi + phi[1]) * qt.sigmaz(),
+                               qo.ry(np.pi + phi[0]) * qt.sigmaz())
 
         return sim_output, meas_o
 
