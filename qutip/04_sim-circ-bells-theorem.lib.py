@@ -160,8 +160,14 @@ import qutip.qip.operations as qo
 
 class MySim (el.DefaultSim):
 
-    # alpha = Theta/2 = phi/4
+    # Rotation in Hilbert space (alpha) around Y axis in Bloch sphere
+    # coordinates (Theta) is for rotation operator (phi):
+    #
+    #   *     phi   = 2*Theta  = 4*alpha
+    #     <=> alpha = Theta/2  = phi/4
+    #
     # alpha: Hilbert space, Theta: Bloch sphere, phi: rotation operator
+    #
     DELTA_ALPHA               = 1/12
 
     ALPHA_A0                  = -1/4
@@ -169,22 +175,11 @@ class MySim (el.DefaultSim):
     ALPHA_C0                  = +DELTA_ALPHA
     ALPHA_C1                  = +DELTA_ALPHA - 1/2
 
-    # Rotation in Hilbert space (alpha) around Y axis in Bloch sphere
-    # coordinates (Theta) is for rotation operator (phi):
+    # R_2y(alpha) = R_y(2*alpha)
     #
-    #   * phi = 2*Theta = 4*alpha
+    #  <=> common known 2 dimensional rotation matrix
     #
-    # Therefore, measuring to sigmax (means to |+> basis) is if
-    #   phi = 2 * Theta      = 2 * (2 * alpha)
-    #       = 2 * (1/2 * pi) = 2 * (2 * 1/4 * pi)
-    #       = pi
-
-    # DELTA_PHI = 1/3 pi            <=> delta_alpha = 1/12 pi
-    DELTA_PHI                 = 4*DELTA_ALPHA
-    PHI_A0                    = 4*ALPHA_A0
-    PHI_B0                    = 4*ALPHA_B0
-    PHI_C0                    = 4*ALPHA_C0
-    PHI_C1                    = 4*ALPHA_C1
+    def r_2y(self, alpha: float) -> qt.Qobj: return qo.ry(2*alpha)
 
     def pre_measurement(self, custom_args: dict, sim_output: qt.Qobj,
                         measurement_ops: object) -> (qt.Qobj, object):
@@ -192,7 +187,8 @@ class MySim (el.DefaultSim):
 
         match custom_args['measurement_case']:
             case 0:
-                # O_sigmax(a_|0>, b_|0>) = O_sigmax(-1/4*pi, -1/12*pi)
+                # O_sigmax(a_|0>, b_|0>) = O_sigmax(alpha_1, alpha_0)
+                #                        = O_sigmax(-1/4*pi, -1/12*pi)
                 #
                 # Probability in predicate/first-order logic (satisfy
                 # Bell's inequality):
@@ -208,9 +204,10 @@ class MySim (el.DefaultSim):
                 #
                 # !!! Consider: P(a_|0> AND b_|0>) == P(a_|0> AND c_|0>)
                 #          but: P(a_|0>,    b_|0>) != P(a_|0>   , c_|0>)
-                phi    = [self.PHI_A0*np.pi, self.PHI_B0*np.pi]
+                alphas   = [self.ALPHA_B0*np.pi, self.ALPHA_A0*np.pi]
             case 1:
-                # O_sigmax(a_|0>, c_|0>) = O_sigmax(-1/4*pi, 1/12*pi)
+                # O_sigmax(a_|0>, c_|0>) = O_sigmax(alpha_1, alpha_0)
+                #                        = O_sigmax(-1/4*pi, 1/12*pi)
                 #
                 # Probability in predicate/first-order logic (satisfy
                 # Bell's inequality):
@@ -226,9 +223,10 @@ class MySim (el.DefaultSim):
                 #
                 # !!! Consider: P(a_|0> AND b_|0>) == P(a_|0> AND c_|0>)
                 #          but: P(a_|0>,    b_|0>) != P(a_|0>   , c_|0>)
-                phi    = [self.PHI_A0*np.pi, self.PHI_C0*np.pi]
+                alphas   = [self.ALPHA_C0*np.pi, self.ALPHA_A0*np.pi]
             case 2:
-                # O_sigmax(b_|0>, c_|1>) = O_sigmax(-1/4*pi, 1/4*pi)
+                # O_sigmax(b_|0>, c_|1>) = O_sigmax(alpha_1, alpha_0)
+                #                        = O_sigmax(-1/4*pi, 1/4*pi)
                 #
                 # Probability in predicate/first-order logic (satisfy
                 # Bell's inequality):
@@ -244,9 +242,7 @@ class MySim (el.DefaultSim):
                 #     = cos( (-1/12*pi) - (1/12*pi - pi/2) )**2
                 #     = 1/4 = 0.25
                 #
-                # Consider: phi = 2*Theta = 4*alpha
-                #               = 4*(pi/2) + DELTA_PHI
-                phi    = [self.PHI_B0*np.pi, self.PHI_C1*np.pi]
+                alphas   = [self.ALPHA_C1*np.pi, self.ALPHA_B0*np.pi]
             case _:
                 raise AssertionError("Just 3 combinations are possible!")
 
@@ -282,11 +278,13 @@ class MySim (el.DefaultSim):
         #   if True:  angles are relative  to |+> basis  for sigma_x.
         #   if False: angles are absolute, to |0> basis, for sigma_z.
         if True:
-            meas_o = qt.tensor(qo.ry(phi[1]) * qt.sigmax(),
-                               qo.ry(phi[0]) * qt.sigmax())
+            meas_o = qt.tensor(
+                self.r_2y(2 * alphas[1]) * qt.sigmax(),
+                self.r_2y(2 * alphas[0]) * qt.sigmax())
         else:
-            meas_o = qt.tensor(qo.ry(np.pi + phi[1]) * qt.sigmaz(),
-                               qo.ry(np.pi + phi[0]) * qt.sigmaz())
+            meas_o = qt.tensor(
+                self.r_2y(2 * (np.pi/4 + alphas[1])) * qt.sigmaz(),
+                self.r_2y(2 * (np.pi/4 + alphas[0])) * qt.sigmaz())
 
         return sim_output, meas_o
 
@@ -311,14 +309,14 @@ class MySim (el.DefaultSim):
         # ---
 
         print(
-          ("\n**** For delta_alpha=%.4f*pi in Hilbert space"
-           + " (delta_phi=%.4f*pi) measuring is"
+          ("\n**** For delta_alpha=%.4f*pi in Hilbert space measuring"
+           + " is"
          + "\n**** a|0> := alpha_a|0>               = % 2.4f*pi"
          + "\n**** b|0> := alpha_b|0>               = % 2.4f*pi"
          + "\n**** c|0> := alpha_c|0>               = % 2.4f*pi"
          + "\n**** c|1> := alpha_c|1> = c|0> - pi/2 = % 2.4f*pi"
          + "\n****")
-            % (self.DELTA_ALPHA, self.DELTA_PHI,
+            % (self.DELTA_ALPHA,
                self.ALPHA_A0, self.ALPHA_B0, self.ALPHA_C0,
                self.ALPHA_C1))
 
